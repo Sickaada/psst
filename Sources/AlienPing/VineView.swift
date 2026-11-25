@@ -69,41 +69,22 @@ struct VineView:View {
         VStack(spacing:0) {
             HStack(spacing:8) {
                 Button { attention.showInbox?() } label:{
-                    HStack(spacing:7) { Image(systemName:"leaf.fill").foregroundStyle(Color(hex:"748354"));Text("Psst").fontWeight(.semibold);Text("\(unread.count) unread").foregroundStyle(ink.opacity(0.65)) }
+                    HStack(spacing:7) { Image(systemName:"leaf.fill").foregroundStyle(Color(hex:"748354"));Text("Psst").fontWeight(.semibold);Text("Latest \(min(6,unread.count)) · \(unread.count) unread").foregroundStyle(ink.opacity(0.65)) }
                 }.buttonStyle(.plain).help("Open notification tray")
                 Spacer(minLength:2)
                 Button { state.expanded=false } label:{Image(systemName:"chevron.left").frame(width:28,height:28)}.buttonStyle(.plain).help("Collapse vine").accessibilityLabel("Collapse notification vine")
             }.padding(.leading,12).padding(.trailing,5).frame(height:40)
                 .background(Color(hex:"FFF8ED"),in:Capsule()).overlay(Capsule().strokeBorder(ink.opacity(0.1)))
                 .shadow(color:.black.opacity(0.08),radius:8,y:3).vineTarget().padding(.leading,42).padding(.trailing,10).padding(.top,8).padding(.bottom,8)
-            ScrollView {
-                VStack(alignment:.leading,spacing:0) {
-                    ForEach(VineSummary.groups(unread),id:\.source) { group in
-                        HStack(spacing:7) {
-                            Image(systemName:group.source == .claude ? "sun.max.fill":"terminal.fill")
-                            Text(group.source.rawValue).fontWeight(.semibold)
-                            Text("\(group.totalCount)").foregroundStyle(ink.opacity(0.5))
-                        }.foregroundStyle(accent(group.source)).padding(.horizontal,12).padding(.vertical,7)
-                            .background(Color(hex:"FFF8ED"),in:Capsule()).padding(.leading,45).padding(.top,12).padding(.bottom,8)
-                        ForEach(group.entries) { entry in row(entry) }
-                        if group.unsavedCount>0 {
-                            Button { attention.showInbox?() } label:{
-                                VStack(alignment:.leading,spacing:5) {
-                                    Text("\(group.unsavedCount) earlier update\(group.unsavedCount==1 ? "":"s")").fontWeight(.semibold)
-                                    Text("Text wasn’t saved. New updates will show details here.").font(.system(size:11)).foregroundStyle(ink.opacity(0.65)).fixedSize(horizontal:false,vertical:true)
-                                }.frame(maxWidth:.infinity,alignment:.leading).padding(13)
-                            }.buttonStyle(.plain).background(Color(hex:"FFF8ED"),in:RoundedRectangle(cornerRadius:18))
-                                .vineTarget(scrolled:true).padding(.leading,52).padding(.trailing,12).padding(.bottom,8)
+            GeometryReader { space in
+                ScrollView {
+                    VStack(alignment:.leading,spacing:0) {
+                        ForEach(VineSummary.recent(unread)) { entry in
+                            row(entry).frame(minHeight:max(112,(space.size.height-16)/CGFloat(max(1,min(6,unread.count)))))
                         }
-                        if group.moreCount>0 {
-                            Button("\(group.moreCount) more in tray") { attention.showInbox?() }
-                                .buttonStyle(.plain).font(.system(size:11,weight:.medium)).foregroundStyle(accent(group.source))
-                                .padding(.horizontal,13).padding(.vertical,8).background(Color(hex:"FFF8ED"),in:Capsule())
-                                .vineTarget(scrolled:true).padding(.leading,52).padding(.bottom,10)
-                        }
-                    }
-                }.frame(maxWidth:.infinity,alignment:.leading).padding(.bottom,15)
-            }.background(alignment:.leading){ VineStem() }.scrollIndicators(.hidden)
+                    }.frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,8)
+                }.scrollIndicators(.hidden)
+            }.background(alignment:.leading){ VineStem() }
             Button { attention.showInbox?() } label:{Text("Open tray").font(.system(size:11,weight:.medium,design:.rounded)).padding(.horizontal,14).padding(.vertical,7)}
                 .buttonStyle(.plain).background(Color(hex:"FFF8ED"),in:Capsule()).vineTarget().padding(.vertical,8)
         }
@@ -111,8 +92,9 @@ struct VineView:View {
     private func accent(_ source:SourceApp)->Color { Color(hex:source == .claude ? "BC673D":"397EA3") }
     private func row(_ entry:InboxEntry)->some View {
         let color=accent(entry.source)
-        let title=model.hideText ? "Notification from \(entry.source.rawValue)" : (entry.title.isEmpty ? String(entry.body.prefix(80)) : entry.title)
-        let detail=model.hideText || entry.title.isEmpty ? "" : entry.body
+        let missing=entry.title.isEmpty && entry.body.isEmpty
+        let title=model.hideText || missing ? "Notification from \(entry.source.rawValue)" : (entry.title.isEmpty ? String(entry.body.prefix(100)) : entry.title)
+        let detail=model.hideText ? "Message preview hidden" : (missing ? "Message text wasn’t saved for this older notification." : (entry.title.isEmpty ? "" : entry.body))
         return HStack(spacing:0) {
             ZStack {
                 Path { p in p.move(to:CGPoint(x:22,y:42));p.addQuadCurve(to:CGPoint(x:52,y:23),control:CGPoint(x:42,y:45)) }.stroke(Color(hex:"748354"),lineWidth:2)
@@ -121,15 +103,19 @@ struct VineView:View {
             }.frame(width:52,height:68).allowsHitTesting(false).accessibilityHidden(true)
             HStack(spacing:2) {
                 Button { attention.open(entry) } label:{
-                    VStack(alignment:.leading,spacing:4) {
-                        Text(title).font(.system(size:13,weight:.semibold,design:.rounded)).lineLimit(2).multilineTextAlignment(.leading)
-                        if !detail.isEmpty { Text(detail).font(.system(size:11)).foregroundStyle(ink.opacity(0.75)).lineLimit(2).multilineTextAlignment(.leading) }
-                        Text(entry.date.formatted(date:.omitted,time:.shortened)).font(.system(size:10)).foregroundStyle(ink.opacity(0.55))
+                    VStack(alignment:.leading,spacing:5) {
+                        HStack {
+                            Text(entry.source.rawValue).fontWeight(.semibold).foregroundStyle(color)
+                            Spacer()
+                            Text(entry.date.formatted(date:.omitted,time:.shortened)).foregroundStyle(ink.opacity(0.55))
+                        }.font(.system(size:11))
+                        Text(title).font(.system(size:15,weight:.semibold,design:.rounded)).lineLimit(2).multilineTextAlignment(.leading)
+                        if !detail.isEmpty { Text(detail).font(.system(size:13)).foregroundStyle(ink.opacity(0.75)).lineLimit(3).multilineTextAlignment(.leading) }
                     }.frame(maxWidth:.infinity,minHeight:46,alignment:.leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).help("Open \(entry.source.rawValue)")
                 Button { attention.markRead(entry.id) } label:{Image(systemName:"checkmark.circle").font(.system(size:18,weight:.light)).foregroundStyle(color).frame(width:32,height:44)}
                     .buttonStyle(.plain).help("Mark read").accessibilityLabel("Mark \(title) read")
-            }.padding(.leading,14).padding(.trailing,5).padding(.vertical,7)
+            }.padding(.leading,14).padding(.trailing,5).padding(.vertical,12)
                 .background(Color(hex:entry.source == .claude ? "FFF6E9":"F0F8FF"),in:RoundedRectangle(cornerRadius:22))
                 .overlay(RoundedRectangle(cornerRadius:22).strokeBorder(color.opacity(0.18)))
                 .shadow(color:.black.opacity(0.07),radius:5,y:3).vineTarget(scrolled:true).padding(.trailing,12)

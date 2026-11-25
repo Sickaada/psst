@@ -1,4 +1,4 @@
-Psst 0.8.2 — little messengers for your Mac
+Psst 0.8.3 — little messengers for your Mac
 
 REQUIRES
 macOS 14 or newer. Apple Silicon and Intel supported.
@@ -51,4 +51,4 @@ The sparkle menu opens your notification tray. Quiet & personal controls meeting
 
 The left-edge vine shows unread items. Click a leaf title to open its app, or its check to mark read. Use the chevron to collapse and the sparkle menu to hide/show the vine. Quiet mode or no unread items shows a compact leaf badge.
 
-The vine previews three recent items per app with message details; More opens the full tray. Earlier items with unsaved text are grouped. Enable Save message text on this Mac in Quiet & personal if you want future details to survive restarting Psst.
+The full-height vine shows the latest six individual unread notifications across both apps. Older items without saved text are labeled as unavailable. Enable Save message text on this Mac in Quiet & personal if you want future details to survive restarting Psst.

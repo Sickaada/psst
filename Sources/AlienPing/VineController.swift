@@ -46,12 +46,9 @@ final class VineController {
         guard state.enabled else { panel.orderOut(nil);return }
         let count=model.attention.inbox.unreadCount
         let expanded=state.expanded && count>0 && !model.attention.isQuiet
-        let groups=VineSummary.groups(model.attention.inbox.entries)
-        let cards=groups.reduce(0){$0+$1.cardCount}
-        let moreLinks=groups.filter{$0.moreCount>0}.count
         let area=screen.visibleFrame
-        let height=expanded ? min(area.height-32,max(220,CGFloat(cards)*96+CGFloat(groups.count)*48+CGFloat(moreLinks)*38+100)) : 116
-        let width:CGFloat=expanded ? min(318,area.width) : 76
+        let height=expanded ? area.height-24 : 116
+        let width:CGFloat=expanded ? min(420,area.width) : 76
         let rect=NSRect(x:area.minX+4,y:area.midY-height/2,width:width,height:height)
         if panel.frame != rect { panel.setFrame(rect,display:true) }
         if presenting && !panel.isVisible { panel.orderFrontRegardless() }

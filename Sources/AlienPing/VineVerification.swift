@@ -27,15 +27,15 @@ enum VineVerification {
         let first=InboxEntry(source:.claude,title:"Fixture",body:"")
         model.attention.inbox.insert(first)
         settle()
-        try require(controller.layoutEvidence.frame.width==318,"Unread item must expand the vine")
+        try require(controller.layoutEvidence.frame.width==420,"Unread item must expand the vine")
         try require(controller.layoutEvidence.targets.count>=3,"Header, notification and tray controls must expose hit targets")
         try require(!controller.layoutEvidence.targets.contains{$0.contains(CGPoint(x:10,y:100))},"Decorative stem must pass clicks through")
-        try require(!controller.layoutEvidence.targets.contains{$0.contains(CGPoint(x:315,y:100))},"Transparent trailing margin must pass clicks through")
+        try require(!controller.layoutEvidence.targets.contains{$0.contains(CGPoint(x:417,y:100))},"Transparent trailing margin must pass clicks through")
         model.attention.markRead(first.id);settle()
         try require(controller.layoutEvidence.frame.width==76,"Mark read must remove the final leaf")
         for i in 0..<200 { model.attention.inbox.insert(InboxEntry(source:i%2==0 ? .claude:.codex,title:"Sample \(i)",body:"")) }
         settle()
-        try require(controller.layoutEvidence.frame.height <= (NSScreen.screens.first?.visibleFrame.height ?? 0)-32,"Large tray must fit the display")
+        try require(controller.layoutEvidence.frame.height <= (NSScreen.screens.first?.visibleFrame.height ?? 0)-24,"Large tray must fit the display")
         let h=controller.layoutEvidence.frame.height
         try require(controller.layoutEvidence.targets.allSatisfy{$0.minY>=0 && $0.maxY<=h},"Offscreen rows must not expose hit targets outside panel")
         model.attention.quietReason="Test quiet";settle()
