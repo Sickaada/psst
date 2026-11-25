@@ -45,7 +45,7 @@ final class Delegate: NSObject, NSApplicationDelegate {
         vineMenuItem?.state = vine?.state.enabled == true ? .on : .off
         model.monitor.start()
         if CommandLine.arguments.contains("-mascotPreview") { showMascotStage() }
-        else if !CommandLine.arguments.contains("--login-item") { showSettings() }
+        else if !CommandLine.arguments.contains("--login-item") && !CommandLine.arguments.contains("--background") { showSettings() }
         if CommandLine.arguments.contains("--preview-all") {
             DispatchQueue.main.asyncAfter(deadline:.now()+1) {
                 self.model.preview(.claude)

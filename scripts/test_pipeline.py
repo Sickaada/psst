@@ -38,6 +38,12 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual((live/'version').read_text(),'old')
                 self.assertEqual((root/'failed.app/version').read_text(),'new')
                 self.assertEqual(launch.call_count,2)
+    def test_update_launch_is_background_without_test_alerts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            logs=Path(tmp); (logs/'AlienPing-status.json').write_text('{}')
+            with patch.object(p,'LOGS',logs), patch.object(p,'run') as run, patch.object(p,'pids',return_value=set()), patch.object(p,'fresh_status',return_value=True):
+                p.launch()
+                self.assertEqual(run.call_args.args[0],['open','-n','-g',str(p.LIVE),'--args','--background'])
     def test_process_match_is_exact(self):
         path='/test space/AlienPing.app/Contents/MacOS/AlienPing'
         self.assertEqual(p.match_pids('12 '+path+' --preview-all\n13 cat '+path+'\n14 '+path+'Other',path),{12})

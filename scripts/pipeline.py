@@ -68,8 +68,8 @@ def verify(app):
 
 def launch(preview=False):
     started=time.time()
-    command=['open','-n','-g',str(LIVE)]
-    if preview: command+=['--args','--preview-all']
+    command=['open','-n','-g',str(LIVE),'--args','--background']
+    if preview: command+=['--preview-all']
     run(command)
     deadline=time.monotonic()+20
     while time.monotonic()<deadline:

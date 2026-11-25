@@ -30,12 +30,12 @@ struct PingView: View {
     let dismiss: () -> Void
     @Environment(\.colorScheme) private var scheme
     @State private var hovered = false
-    private var isCodex:Bool { ping.source == .codex }
-    private var ink:Color { Color(hex:scheme == .dark ? (isCodex ? "E5F3FF" : "FFF0DE") : (isCodex ? "21384D" : "423124")) }
-    private var secondary:Color { Color(hex:scheme == .dark ? (isCodex ? "A9C5DA" : "C6B6A5") : (isCodex ? "516B82" : "806D5B")) }
-    private var paper:Color { Color(hex:scheme == .dark ? (isCodex ? "142B3E" : "302A25") : (isCodex ? "EDF6FF" : "FFF8ED")) }
-    private var edge:Color { Color(hex:scheme == .dark ? (isCodex ? "31536D" : "514439") : (isCodex ? "D0E3F5" : "EDDEC9")) }
-    private var accent:Color { scheme == .dark ? color : Color(nsColor:(NSColor(color).blended(withFraction:0.38,of:.black) ?? NSColor(color))) }
+    private var appearance:NotificationAppearance { NotificationAppearance(source:ping.source,scheme:scheme) }
+    private var ink:Color { appearance.ink }
+    private var secondary:Color { appearance.secondary }
+    private var paper:Color { appearance.paper }
+    private var edge:Color { appearance.edge }
+    private var accent:Color { appearance.accent }
     var body: some View {
         ZStack(alignment:.topTrailing) {
             Button(action:open) {
@@ -46,7 +46,7 @@ struct PingView: View {
                         Text(ping.preview ? "Preview" : "now").font(.system(size:11)).foregroundStyle(secondary)
                     }.padding(.trailing,25)
                     Text(hideText ? "New notification" : ping.title)
-                        .font(.system(size:16,weight:.semibold)).tracking(-0.2).lineLimit(1)
+                        .font(NotificationAppearance.title).tracking(-0.2).lineLimit(1)
                         .frame(maxWidth:.infinity,alignment:.leading)
                     Text(hideText ? "Your message is ready to read." : ping.body)
                         .font(.system(size:13)).foregroundStyle(secondary).lineLimit(2)
@@ -71,7 +71,7 @@ struct PingView: View {
         }
         .background(NotificationBubble().fill(paper))
         .overlay(NotificationBubble().stroke(edge.opacity(hovered ? 1 : 0.8),lineWidth:1).allowsHitTesting(false))
-        .shadow(color:.black.opacity(scheme == .dark ? 0.18 : 0.08),radius:4,x:0,y:2)
+        .shadow(color:appearance.shadow,radius:4,x:0,y:2)
         .padding(.leading,60).padding(.trailing,6).padding(.vertical,6)
         .onHover { hovered=$0 }
     }

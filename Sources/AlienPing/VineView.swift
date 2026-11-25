@@ -57,7 +57,10 @@ struct VineView:View {
     @ObservedObject var model:Model
     @ObservedObject var state:VineState
     var targetsChanged:([VineHitTarget])->Void = {_ in}
-    private let ink=Color(hex:"303730")
+    @Environment(\.colorScheme) private var scheme
+    private var ink:Color { Color(hex:scheme == .dark ? "E5ECE4":"303730") }
+    private var chrome:Color { Color(hex:scheme == .dark ? "253029":"FAFCF7") }
+    private var leafInk:Color { Color(hex:scheme == .dark ? "BDD1AB":"536B43") }
     private var unread:[InboxEntry] { VineSummary.previewable(attention.inbox.entries) }
     private var isExpanded:Bool { state.visible(hasItems:!unread.isEmpty,quiet:attention.isQuiet) }
     var body:some View {
@@ -70,21 +73,20 @@ struct VineView:View {
         .coordinateSpace(name:"vine")
         .onPreferenceChange(VineTargets.self,perform:targetsChanged)
         .font(.system(size:13)).foregroundStyle(ink)
-        .environment(\.colorScheme,.light)
     }
     private var expanded:some View {
         VStack(spacing:0) {
             HStack(spacing:8) {
                 Button { attention.showInbox?() } label:{
                     HStack(spacing:8) {
-                        Image(systemName:"leaf").font(.system(size:13,weight:.medium)).foregroundStyle(Color(hex:"687D55"))
+                        Image(systemName:"leaf").font(.system(size:13,weight:.medium)).foregroundStyle(leafInk)
                         Text("Notifications").font(.system(size:13,weight:.medium))
-                        Text("\(min(6,unread.count)) of \(unread.count)").font(.system(size:11)).foregroundStyle(Color(hex:"687268"))
+                        Text("\(min(6,unread.count)) of \(unread.count)").font(.system(size:11)).foregroundStyle(ink.opacity(0.65))
                     }
                 }.buttonStyle(.plain).help("Open notification tray")
                 Spacer(minLength:2)
             }.padding(.leading,12).padding(.trailing,5).frame(height:40)
-                .background(Color(hex:"FAFCF7"),in:RoundedRectangle(cornerRadius:12))
+                .background(chrome,in:RoundedRectangle(cornerRadius:12))
                 .shadow(color:.black.opacity(0.08),radius:8,y:2).vineTarget().padding(.leading,42).padding(.trailing,10).padding(.top,8).padding(.bottom,8)
             GeometryReader { space in
                 ScrollView {
@@ -93,7 +95,7 @@ struct VineView:View {
                             VStack(alignment:.leading,spacing:8) {
                                 Text("No saved previews yet").font(.system(size:15,weight:.medium))
                                 Text("New notifications with message text will appear here. Older alerts without saved text stay in your tray.").font(.system(size:12)).foregroundStyle(ink.opacity(0.7))
-                            }.padding(18).background(Color(hex:"FAFCF7"),in:RoundedRectangle(cornerRadius:14)).padding(.leading,56).padding(.trailing,12)
+                            }.padding(18).background(chrome,in:RoundedRectangle(cornerRadius:14)).padding(.leading,56).padding(.trailing,12)
                         }
                         ForEach(VineSummary.recent(unread)) { entry in
                             row(entry).frame(minHeight:max(112,(space.size.height-16)/CGFloat(max(1,min(6,unread.count)))))
@@ -102,12 +104,12 @@ struct VineView:View {
                 }.scrollIndicators(.hidden)
             }.background(alignment:.leading){ VineStem() }
             Button { attention.showInbox?() } label:{Text("View all notifications").font(.system(size:11,weight:.medium)).padding(.horizontal,14).padding(.vertical,7)}
-                .buttonStyle(.plain).background(Color(hex:"FFF8ED"),in:Capsule()).vineTarget().padding(.vertical,8)
+                .buttonStyle(.plain).background(chrome,in:Capsule()).vineTarget().padding(.vertical,8)
         }
     }
-    private func accent(_ source:SourceApp)->Color { Color(hex:source == .claude ? "A8603F":"347798") }
     private func row(_ entry:InboxEntry)->some View {
-        let color=accent(entry.source)
+        let appearance=NotificationAppearance(source:entry.source,scheme:scheme)
+        let color=appearance.accent
         let missing=entry.title.isEmpty && entry.body.isEmpty
         let title=model.hideText || missing ? "Notification from \(entry.source.rawValue)" : (entry.title.isEmpty ? String(entry.body.prefix(100)) : entry.title)
         let detail=model.hideText ? "Message preview hidden" : (missing ? "Message text wasn’t saved for this older notification." : (entry.title.isEmpty ? "" : entry.body))
@@ -122,17 +124,18 @@ struct VineView:View {
                         HStack {
                             Text(entry.source.rawValue).fontWeight(.semibold).foregroundStyle(color)
                             Spacer()
-                            Text(entry.date.formatted(date:.omitted,time:.shortened)).foregroundStyle(ink.opacity(0.55))
+                            Text(entry.date.formatted(date:.omitted,time:.shortened)).foregroundStyle(appearance.secondary)
                         }.font(.system(size:11))
-                        Text(title).font(.system(size:14,weight:.medium)).lineLimit(2).multilineTextAlignment(.leading)
-                        if !detail.isEmpty { Text(detail).font(.system(size:12)).foregroundStyle(Color(hex:entry.source == .claude ? "66574D":"4C606D")).lineLimit(3).multilineTextAlignment(.leading) }
+                        Text(title).font(NotificationAppearance.title).tracking(-0.2).foregroundStyle(appearance.ink).lineLimit(2).multilineTextAlignment(.leading)
+                        if !detail.isEmpty { Text(detail).font(NotificationAppearance.body).foregroundStyle(appearance.secondary).lineLimit(3).multilineTextAlignment(.leading) }
                     }.frame(maxWidth:.infinity,minHeight:46,alignment:.leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).help("Open \(entry.source.rawValue)")
                 Button { attention.markRead(entry.id) } label:{Image(systemName:"checkmark.circle").font(.system(size:16,weight:.regular)).foregroundStyle(color.opacity(0.8)).frame(width:30,height:44)}
                     .buttonStyle(.plain).help("Mark read").accessibilityLabel("Mark \(title) read")
-            }.padding(.leading,14).padding(.trailing,5).padding(.vertical,12)
-                .background(Color(hex:entry.source == .claude ? "FFFCF6":"F4FAFF"),in:RoundedRectangle(cornerRadius:14))
-                .shadow(color:.black.opacity(0.10),radius:10,y:3).vineTarget(scrolled:true).padding(.trailing,12)
+            }.padding(.leading,27).padding(.trailing,8).padding(.vertical,14)
+                .background(NotificationBubble().fill(appearance.paper))
+                .overlay(NotificationBubble().stroke(appearance.edge.opacity(0.8),lineWidth:1).allowsHitTesting(false))
+                .shadow(color:appearance.shadow,radius:4,y:2).vineTarget(scrolled:true).padding(.trailing,12)
         }.padding(.bottom,8).modifier(VineArrival())
     }
     private var collapsed:some View {
@@ -146,8 +149,8 @@ struct VineView:View {
                 Image(systemName:attention.isQuiet ? "moon":"chevron.\(isExpanded ? "left":"right")").font(.system(size:18,weight:.semibold))
                 if !isExpanded && !unread.isEmpty { Text("\(unread.count)").font(.system(size:11,weight:.semibold)) }
                 if unread.isEmpty { Image(systemName:"leaf").font(.system(size:12)) }
-            }.foregroundStyle(Color(hex:"536B43")).frame(width:52,height:64)
-                .background(Color(hex:"FAFCF7"),in:RoundedRectangle(cornerRadius:18))
+            }.foregroundStyle(leafInk).frame(width:52,height:64)
+                .background(chrome,in:RoundedRectangle(cornerRadius:18))
                 .shadow(color:.black.opacity(0.14),radius:8,y:3).contentShape(RoundedRectangle(cornerRadius:18))
         }.buttonStyle(.plain)
             .accessibilityLabel(isExpanded ? "Collapse notification vine" : "Expand notification vine")

@@ -22,13 +22,15 @@ These GIFs show the bundled character frames. In the app, companions also travel
 
 ![Native notification vine with sample messages](docs/images/vine.png)
 
-Unread Claude and Codex updates become orange and blue leaves along the left screen edge. Click a title to open its app or the check to mark it read. The vine uses the full available screen height and shows the latest six individual unread notifications across both apps, newest first, with their titles and message previews. Items without saved text are omitted from the vine; all notifications remain in the full tray. New cards fade in, with a static Reduce Motion alternative. Collapse it with the larger button midway down the left edge, or hide it through **sparkle menu → Show notification vine**. Your choice survives restart. Quiet mode and an empty tray show only the small leaf badge.
+Unread Claude and Codex updates become orange and blue leaves along the left screen edge. Click a title to open its app or the check to mark it read. The vine uses the full available screen height and shows the latest six individual unread notifications across both apps, newest first, with their titles and message previews. Items without saved text are omitted from the vine; all notifications remain in the full tray. New cards fade in, with a static Reduce Motion alternative. Collapse it with the larger button midway down the left edge, or hide it through **sparkle menu → Show notification vine**. Your choice survives restart. Quiet mode and an empty tray default to the small leaf badge; clicking it still opens the vine. The vine and live alerts share speech-bubble styling, including light/dark colors and blue Codex accents.
 
 ![Collapsed vine badge](docs/images/vine-collapsed.png)
 
 ![Native card fade rendered offscreen](docs/images/vine-fade.gif)
 
 The fade preview uses illustrative content rendered offscreen; it is not a desktop recording.
+
+![Matching tree and notification styling](docs/images/matched-ui.png)
 
 ### Catch up when you’re ready
 
@@ -45,7 +47,7 @@ Missed notifications stay in your tray. Bursts within two seconds become one sum
 
 ## Download and install
 
-Get **Psst-0.8.6-universal.dmg** from [Releases](https://github.com/Sickaada/psst/releases). Apple Silicon and Intel are included in one app. macOS 14 or newer is required. Notification compatibility depends on the macOS and source-app versions; this first release has not been tested on every supported Mac.
+Get **Psst-0.8.7-universal.dmg** from [Releases](https://github.com/Sickaada/psst/releases). Apple Silicon and Intel are included in one app. macOS 14 or newer is required. Notification compatibility depends on the macOS and source-app versions; this first release has not been tested on every supported Mac.
 
 1. Open the disk image and drag **Psst** into **Applications**. Eject the disk image.
 2. Open Psst from Applications. This personal/community build is locally signed, **not Apple-notarized**. If macOS blocks it, review [Apple’s instructions for opening an app from an unidentified developer](https://support.apple.com/en-us/102445). Only proceed if you trust this download. Do not disable Gatekeeper globally or install a signing certificate.
@@ -100,7 +102,7 @@ python3 scripts/setup_signing.py
 
 The output defaults to `../Psst.app`; set `APP_OUTPUT` to choose another path. The private signing key stays in your Keychain; never commit/export it to this repository. `scripts/sign_app.py` pins the certificate and bundle identifier and fails if no valid signing configuration exists. It does not silently fall back to ad-hoc signing. Our release signing identity is not included. Your own builds require your own initial Accessibility approval.
 
-`./pipeline.sh update --preview` is the legacy developer checkout updater. It uses `../AlienPing.app`, takes a backup, verifies signatures, checks a fresh runtime heartbeat, and sends synthetic notifications. It does not overwrite `/Applications/Psst.app`. `./pipeline.sh rollback` restores its previous local build and re-signs it with the configured identity.
+`./pipeline.sh update` is the legacy developer checkout updater. It uses `../AlienPing.app`, takes a backup, verifies signatures, checks a fresh runtime heartbeat, and starts quietly without opening settings or sending test notifications. Synthetic notifications are only sent when explicitly requested with `--preview`. It does not overwrite `/Applications/Psst.app`. `./pipeline.sh rollback` restores its previous local build and re-signs it with the configured identity.
 
 For a distributable release, run `python3 scripts/package_release.py /path/to/Psst.app /path/to/output`. Apple Developer ID signing and notarization are required for normal trusted public distribution; this repository does not claim notarization.
 
