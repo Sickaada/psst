@@ -8,6 +8,8 @@ final class Delegate: NSObject, NSApplicationDelegate {
     var status: NSStatusItem!
     var window: NSWindow?
     var mascotStage: MascotStageController?
+    var vine:VineController?
+    var vineMenuItem:NSMenuItem?
     var inboxWindow:NSWindow?
     var unreadItem:NSMenuItem?
     var terminationSignal: DispatchSourceSignal?
@@ -17,6 +19,7 @@ final class Delegate: NSObject, NSApplicationDelegate {
         let menu=NSMenu()
         let trayItem=NSMenuItem(title:"Notification tray",action:#selector(showInbox),keyEquivalent:"i");trayItem.target=self;unreadItem=trayItem;menu.addItem(trayItem)
         let quietItem=NSMenuItem(title:"Toggle quiet mode",action:#selector(toggleQuiet),keyEquivalent:"d");quietItem.target=self;menu.addItem(quietItem)
+        let vineItem=NSMenuItem(title:"Show notification vine",action:#selector(toggleVine),keyEquivalent:"v");vineItem.target=self;vineMenuItem=vineItem;menu.addItem(vineItem)
         menu.addItem(.separator())
         let stageItem=NSMenuItem(title:"Mascot Stage",action:#selector(showMascotStage),keyEquivalent:"m");stageItem.target=self
         menu.addItem(stageItem)
@@ -38,6 +41,8 @@ final class Delegate: NSObject, NSApplicationDelegate {
             self?.status.button?.title = count == 0 ? "" : " \(count)"
         }
         model.attention.start()
+        vine=VineController(model:model);vine?.start()
+        vineMenuItem?.state = vine?.state.enabled == true ? .on : .off
         model.monitor.start()
         if CommandLine.arguments.contains("-mascotPreview") { showMascotStage() }
         else if !CommandLine.arguments.contains("--login-item") { showSettings() }
@@ -51,6 +56,7 @@ final class Delegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now()+1) { self.model.preview() }
         }
     }
+    @objc func toggleVine() { vine?.toggle();vineMenuItem?.state = vine?.state.enabled == true ? .on : .off }
     @objc func toggleQuiet() { model.attention.quietMode = model.attention.quietMode == "Quiet" ? "Automatic" : "Quiet" }
     @objc func showInbox() {
         if inboxWindow == nil {
@@ -77,9 +83,13 @@ final class Delegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
-    func applicationWillTerminate(_ notification: Notification) { model.monitor.stop();model.attention.stop() }
+    func applicationWillTerminate(_ notification: Notification) { vine?.stop();model.monitor.stop();model.attention.stop() }
 }
 let app = NSApplication.shared
+if CommandLine.arguments.contains("--verify-vine") {
+    do { try VineVerification.run();exit(0) }
+    catch { fputs("Vine verification failed: \(error.localizedDescription)\n",stderr);exit(1) }
+}
 if let index=CommandLine.arguments.firstIndex(of:"--render-readme"),CommandLine.arguments.count>index+1 {
     do { try MainActor.assumeIsolated { try ReadmePreview.render(to:URL(fileURLWithPath:CommandLine.arguments[index+1])) };exit(0) }
     catch { fputs("Render failed: \(error)\n",stderr);exit(1) }

@@ -23,6 +23,15 @@ enum ReadmePreview {
             host.cacheDisplay(in:host.bounds,to:rep)
             try rep.representation(using:.png,properties:[:])!.write(to:directory.appendingPathComponent(name))
         }
+        let suite="Psst.VinePreview."+UUID().uuidString
+        let defaults=UserDefaults(suiteName:suite)!
+        defer { defaults.removePersistentDomain(forName:suite) }
+        let state=VineState(defaults:defaults)
+        attention.inbox.insert(InboxEntry(source:.claude,title:"Draft finished",body:"",date:Date().addingTimeInterval(-420)))
+        attention.inbox.insert(InboxEntry(source:.codex,title:"Tests passed",body:"",date:Date().addingTimeInterval(-240)))
+        try save(VineView(attention:attention,model:model,state:state).frame(width:318,height:540).padding(22).background(Color(hex:"D7E2EB")),"vine.png")
+        state.expanded=false
+        try save(VineView(attention:attention,model:model,state:state).frame(width:76,height:116).padding(22).background(Color(hex:"D7E2EB")),"vine-collapsed.png")
         try save(AttentionView(attention:attention,model:model).frame(width:640,height:680),"tray.png")
         try save(AttentionView(attention:attention,model:model,tab:1).frame(width:680,height:1050),"personalize.png")
         try save(VStack(spacing:30) {
