@@ -53,6 +53,18 @@ final class OverlayController {
         Diagnostics.shared.event("overlay_finished",["app":card.ping.source.rawValue,"preview":card.ping.preview])
         presentAvailable()
     }
+    func removeReadNotifications(_ ids:Set<UUID>) {
+        queue=queue.compactMap { original in
+            guard !original.inboxIDs.isEmpty else { return original }
+            var ping=original;ping.inboxIDs.subtract(ids)
+            return ping.inboxIDs.isEmpty ? nil:ping
+        }
+        for (id,card) in Array(cards) where !card.ping.inboxIDs.isEmpty {
+            var ping=card.ping;ping.inboxIDs.subtract(ids)
+            cards[id]=(card.panel,card.anchor,ping,card.slot)
+            if ping.inboxIDs.isEmpty { dismiss(id) }
+        }
+    }
     func stop() {
         stopping=true;queue.removeAll();MascotDirector.shared.stop()
         let old=cards;cards.removeAll();for card in old.values { card.panel.orderOut(nil) }

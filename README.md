@@ -45,7 +45,7 @@ Missed notifications stay in your tray. Bursts within two seconds become one sum
 
 ## Download and install
 
-Get **Psst-0.8.4-universal.dmg** from [Releases](https://github.com/Sickaada/psst/releases). Apple Silicon and Intel are included in one app. macOS 14 or newer is required. Notification compatibility depends on the macOS and source-app versions; this first release has not been tested on every supported Mac.
+Get **Psst-0.8.5-universal.dmg** from [Releases](https://github.com/Sickaada/psst/releases). Apple Silicon and Intel are included in one app. macOS 14 or newer is required. Notification compatibility depends on the macOS and source-app versions; this first release has not been tested on every supported Mac.
 
 1. Open the disk image and drag **Psst** into **Applications**. Eject the disk image.
 2. Open Psst from Applications. This personal/community build is locally signed, **not Apple-notarized**. If macOS blocks it, review [Apple’s instructions for opening an app from an unidentified developer](https://support.apple.com/en-us/102445). Only proceed if you trust this download. Do not disable Gatekeeper globally or install a signing certificate.
@@ -66,12 +66,13 @@ A ZIP version is also available if you prefer to unzip and move `Psst.app` into 
 - Random entrance points on all four edges of the main display’s visible area. The message stays in your chosen corner.
 - Hover pauses dismissal. Close dismisses the card and its companion.
 - **Open chat** invokes the original notification’s Open action when it remains available. If the notification expired or macOS does not expose that action, Psst opens the app instead. Chat routing depends on the source app; it is not guaranteed for every notification.
+- If a notification matches the foreground Claude/Codex chat’s exposed window or selected-tab title, Psst marks it read and skips its leaf/animation. Opening a matching chat later also clears pending alerts. Merely running the app or having a background tab open does not count. Generic or unavailable chat titles keep the notification unread; this is best-effort native-app matching, not guaranteed chat identification.
 - Reduce Motion uses a stationary character and fade.
 - Optional message-text hiding and experimental original-banner suppression.
 
 ## Privacy and limitations
 
-Psst reads visible Notification Center banners through Accessibility. It does not record your screen, read your chat history, request notification APIs from Claude/Codex, or send data to a server. By default notification text stays in memory; only app, time and read state persist in `~/Library/Application Support/Psst/inbox.json`. You can opt into saving message text locally. Turning that option off removes saved text from disk. Diagnostics never include message text. Preferences stay on your Mac.
+Psst reads visible Notification Center banners through Accessibility. It does not record your screen, read your chat history, request notification APIs from Claude/Codex, or send data to a server. By default notification text stays in memory; only app, time and read state persist in `~/Library/Application Support/Psst/inbox.json`. You can opt into saving message text locally. Turning that option off removes saved text from disk. Diagnostics never include message text. Preferences stay on your Mac. Focus matching reads only the foreground supported app’s focused-window and selected-tab labels; these labels are neither logged nor persisted.
 
 Meeting detection inspects Accessibility labels in supported browsers and Zoom for active leave/end-call controls. It does not use screen recording, microphone recording or a calendar account. It is a heuristic: hidden tabs, non-English controls and app updates may prevent detection. Manual Quiet mode remains available. A detected call stays quiet for 60 seconds after its controls disappear. This release has not yet been verified in a real Meet/Zoom call. Saved tray items open the source app; they cannot reliably recover an expired chat-specific notification action.
 

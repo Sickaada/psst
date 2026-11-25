@@ -22,6 +22,7 @@ final class AttentionController: ObservableObject {
     private var sessionUnavailable=false
     private var observers:[NSObjectProtocol]=[]
     let meetings=MeetingMonitor()
+    private let focusedChat=FocusedChatMonitor()
     private let file:URL
     init(model:Model,directory:URL?=nil) {
         self.model=model
@@ -40,6 +41,7 @@ final class AttentionController: ObservableObject {
     }
     func start() {
         if autoMeetings { meetings.start() }
+        focusedChat.start { [weak self] context in self?.markFocusedRead(context) }
         let center=NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.willSleepNotification,NSWorkspace.sessionDidResignActiveNotification] {
             observers.append(center.addObserver(forName:name,object:nil,queue:.main){[weak self] _ in self?.sessionUnavailable=true;self?.tick()})
@@ -50,19 +52,37 @@ final class AttentionController: ObservableObject {
         timer=Timer.scheduledTimer(withTimeInterval:0.5,repeats:true){[weak self] _ in self?.tick()}
         onCountChanged?(inbox.unreadCount);tick()
     }
-    func stop() { timer?.invalidate();timer=nil;meetings.stop();for token in observers { NSWorkspace.shared.notificationCenter.removeObserver(token) };observers=[];save() }
+    func stop() { timer?.invalidate();timer=nil;meetings.stop();focusedChat.stop();for token in observers { NSWorkspace.shared.notificationCenter.removeObserver(token) };observers=[];save() }
     func preference(_ source:SourceApp)->CompanionPreferences { preferences[source.rawValue] ?? CompanionPreferences(character:source == .claude ? "sunburst":"terminal") }
     func change(_ source:SourceApp,_ update:(inout CompanionPreferences)->Void) { var p=preference(source);update(&p);preferences[source.rawValue]=p }
     func receive(_ ping:Ping) {
-        let entry=InboxEntry(source:ping.source,title:ping.title,body:ping.body)
-        inbox.insert(entry);live[entry.id]=ping;save()
-        queue.enqueue(entry.id,at:Date.timeIntervalSinceReferenceDate,quiet:isQuiet)
-        Diagnostics.shared.event("inbox_received",["app":ping.source.rawValue,"quiet":isQuiet,"unread":inbox.unreadCount])
+        focusedChat.inspect { [weak self] context in
+            guard let self else { return }
+            let seen = !self.sessionUnavailable && context?.matches(source:ping.source,title:ping.title,body:ping.body)==true
+            let entry=InboxEntry(source:ping.source,title:ping.title,body:ping.body,read:seen)
+            self.inbox.insert(entry)
+            if !seen {
+                var livePing=ping;livePing.inboxIDs=[entry.id]
+                self.live[entry.id]=livePing
+                self.queue.enqueue(entry.id,at:Date.timeIntervalSinceReferenceDate,quiet:self.isQuiet)
+            }
+            self.save()
+            Diagnostics.shared.event(seen ? "notification_already_visible":"inbox_received",["app":ping.source.rawValue,"quiet":self.isQuiet,"unread":self.inbox.unreadCount])
+        }
     }
-    func markRead(_ id:UUID) { inbox.markRead(id);queue.remove(id);live.removeValue(forKey:id);save() }
-    func markAllRead() { inbox.markAllRead();queue.clear();live.removeAll();save() }
-    func remove(_ id:UUID) { inbox.remove(id);queue.remove(id);live.removeValue(forKey:id);save() }
-    func clear() { inbox.clear();queue.clear();live.removeAll();save() }
+    private func markFocusedRead(_ context:FocusedChat) {
+        guard !sessionUnavailable else { return }
+        let ids=Set(inbox.entries.filter{!$0.read && context.matches(source:$0.source,title:$0.title,body:$0.body)}.map(\.id))
+        guard !ids.isEmpty else { return }
+        for id in ids { inbox.markRead(id);queue.remove(id);live.removeValue(forKey:id) }
+        model.overlay.removeReadNotifications(ids)
+        save()
+        Diagnostics.shared.event("focused_chat_seen",["app":context.source.rawValue,"count":ids.count])
+    }
+    func markRead(_ id:UUID) { model.overlay.removeReadNotifications([id]);inbox.markRead(id);queue.remove(id);live.removeValue(forKey:id);save() }
+    func markAllRead() { model.overlay.removeReadNotifications(Set(inbox.entries.map(\.id)));inbox.markAllRead();queue.clear();live.removeAll();save() }
+    func remove(_ id:UUID) { model.overlay.removeReadNotifications([id]);inbox.remove(id);queue.remove(id);live.removeValue(forKey:id);save() }
+    func clear() { model.overlay.removeReadNotifications(Set(inbox.entries.map(\.id)));inbox.clear();queue.clear();live.removeAll();save() }
     func open(_ entry:InboxEntry) { markRead(entry.id);model.openSource(entry.source) }
     private func save() {
         onCountChanged?(inbox.unreadCount)
@@ -105,6 +125,7 @@ final class AttentionController: ObservableObject {
             let apps=Set(entries.map{$0.source.rawValue}).sorted().joined(separator:" and ")
             let count=entries.count
             var summary=Ping(source:entries[0].source,title:wasDeferred ? "While you were away" : "\(count) notifications are ready",body:"\(count) saved from \(apps). Catch up when you’re ready.")
+            summary.inboxIDs=Set(entries.map(\.id))
             summary.actionLabel="Open tray"
             summary.openNotification={ [weak self] in self?.showInbox?() }
             model.overlay.enqueue(summary)

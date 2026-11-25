@@ -26,6 +26,7 @@ struct Ping {
     let source: SourceApp
     let title: String
     let body: String
+    var inboxIDs:Set<UUID> = []
     var actionLabel:String? = nil
     var preview = false
     var openNotification: (() -> Void)? = nil
