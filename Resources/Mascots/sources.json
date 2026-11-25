@@ -1,0 +1,15 @@
+{
+  "characters": {
+    "origin": "Original procedural Three.js models created for Psst",
+    "ids": ["sunburst", "terminal"],
+    "entranceFramesEach": 64,
+    "idleFramesEach": 24,
+    "license": "MIT"
+  },
+  "arrivalEffect": {
+    "url": "https://opengameart.org/content/teleporter-effect",
+    "author": "rubberduck",
+    "license": "CC0-1.0",
+    "enabledForTheseCharacters": false
+  }
+}

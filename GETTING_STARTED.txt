@@ -1,0 +1,48 @@
+Psst 0.7.0 — little messengers for your Mac
+
+REQUIRES
+macOS 14 or newer. Apple Silicon and Intel supported.
+Claude and/or Codex desktop app installed. No API key or developer tools needed.
+
+INSTALL
+1. Drag Psst.app into Applications, then eject the disk image.
+   If you downloaded the ZIP, move its Psst.app to Applications.
+2. Open Psst from Applications.
+3. This first community build is locally signed but NOT Apple-notarized.
+   macOS may block the first launch. If you trust this release, follow Apple's
+   Open Anyway instructions under System Settings > Privacy & Security:
+   https://support.apple.com/en-us/102445
+   Do not disable Gatekeeper globally or import any certificate.
+4. In Psst, click Connect. Enable Psst under Privacy & Security > Accessibility.
+   Psst cannot grant this permission for you. Quit and reopen it if needed.
+5. Keep Claude/Codex notifications and banners enabled in macOS settings.
+   Preview tests the visuals; a real notification tests the connection.
+6. Optional: General > Login Items > Open at Login > add Psst from Applications.
+
+USING PSST
+The sparkle menu opens settings or quits Psst. Eight entrance styles shuffle
+without immediate repeats; characters arrive from random screen-edge points.
+Hover to keep a message visible. Click Open chat to invoke the original
+notification action when available. An expired or unsupported notification
+falls back to opening its app. Native replies remain in Notification Center.
+
+PRIVACY
+No screen recording, remote services, telemetry, chat-history access or API keys.
+Notification text is held in memory only. Diagnostic event logs (without message
+contents) are stored locally in ~/Library/Logs/Psst/.
+
+UPDATES AND REMOVAL
+Quit Psst, replace the app in Applications with a later release, then reopen it.
+To uninstall: quit, remove it from Login Items and Accessibility, then delete
+Psst.app. Optional local settings use the legacy identifier local.alienping.mac;
+logs are in ~/Library/Logs/Psst/. No background daemon is required.
+
+KNOWN LIMITS
+Notification Center Accessibility behavior can change with macOS releases.
+Real chat routing and notification capture depend on the source app and OS.
+Focus modes can suppress the banners Psst needs. Original-banner suppression
+is experimental and off by default. Not tested on every supported Mac.
+
+SOURCE, RELEASES AND ISSUES
+https://github.com/Sickaada/psst
+Independent community software; not affiliated with Anthropic or OpenAI.

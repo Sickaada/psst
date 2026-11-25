@@ -1,0 +1,17 @@
+.build/
+.swiftpm/
+.DS_Store
+__pycache__/
+*.pyc
+*.app/
+*.dmg
+*.zip
+*.p12
+*.pfx
+*.key
+*.keychain*
+signing.json
+.env*
+Resources/Mascots/tavi*.png
+Resources/Mascots/riff*.png
+Resources/Companions.png*

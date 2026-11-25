@@ -1,0 +1,6 @@
+Sunburst and Terminal: original procedural 3D models and rendered animation frames for Psst. Covered by the repository MIT license.
+
+arrival.png: teleporter effect by rubberduck, CC0 1.0 Universal.
+Source: https://opengameart.org/content/teleporter-effect
+License: https://creativecommons.org/publicdomain/zero/1.0/
+This legacy effect is retained by the manifest; current companions do not use its atlas.
