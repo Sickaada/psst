@@ -4,9 +4,36 @@ Little messengers for your Mac notifications.
 
 Psst turns Claude and Codex desktop notifications into animated companions and speech bubbles. Claude gets a warm sunburst; Codex gets a terminal robot and a blue bubble. All eight entrances rotate in a shuffled order, starting at random points along the screen edges.
 
+## A little personality, without losing the message
+
+![Claude cream and Codex blue speech bubbles](docs/images/bubbles.png)
+
+Actual app views rendered offscreen with illustrative messages. No desktop recording.
+
+### All eight animations
+
+![Running, chasing, parkour and delivery animations](docs/images/animations-1.gif)
+
+![Portal, peekaboo, celebration and floating animations](docs/images/animations-2.gif)
+
+These GIFs show the bundled character frames. In the app, companions also travel from random points along your selected screen edges; the message stays readable in its corner. All eight styles and all four edges are enabled by default.
+
+### Catch up when you’re ready
+
+![Psst notification tray with sample Claude and Codex messages](docs/images/tray.png)
+
+Missed notifications stay in your tray. Bursts within two seconds become one summary. Quiet mode holds deliveries until you’re ready, then offers one catch-up.
+
+<details>
+<summary>See quiet mode and personalization settings</summary>
+
+![Quiet mode, privacy and per-app companion settings](docs/images/personalize.png)
+
+</details>
+
 ## Download and install
 
-Get **Psst-0.7.0-universal.dmg** from [Releases](https://github.com/Sickaada/psst/releases). Apple Silicon and Intel are included in one app. macOS 14 or newer is required. Notification compatibility depends on the macOS and source-app versions; this first release has not been tested on every supported Mac.
+Get **Psst-0.8.0-universal.dmg** from [Releases](https://github.com/Sickaada/psst/releases). Apple Silicon and Intel are included in one app. macOS 14 or newer is required. Notification compatibility depends on the macOS and source-app versions; this first release has not been tested on every supported Mac.
 
 1. Open the disk image and drag **Psst** into **Applications**. Eject the disk image.
 2. Open Psst from Applications. This personal/community build is locally signed, **not Apple-notarized**. If macOS blocks it, review [Apple’s instructions for opening an app from an unidentified developer](https://support.apple.com/en-us/102445). Only proceed if you trust this download. Do not disable Gatekeeper globally or install a signing certificate.
@@ -19,6 +46,9 @@ A ZIP version is also available if you prefer to unzip and move `Psst.app` into 
 
 ## What it does
 
+- A local notification tray with unread counts, mark-read and remove controls; up to 200 items for seven days.
+- Automatic quiet delivery after two minutes idle and best-effort Meet/Zoom call detection, plus manual Quiet/Allow overrides.
+- Per-app companion, accent, allowed styles and entrance edges; calm/playful presets.
 - Eight styles: running, chasing, parkour, delivery, portal, peekaboo, celebration, floating.
 - Every style appears before the shuffle refills; no immediate repeats at cycle boundaries.
 - Random entrance points on all four edges of the main display’s visible area. The message stays in your chosen corner.
@@ -29,7 +59,9 @@ A ZIP version is also available if you prefer to unzip and move `Psst.app` into 
 
 ## Privacy and limitations
 
-Psst reads visible Notification Center banners through Accessibility. It does not record your screen, read your chat history, request notification APIs from Claude/Codex, or send data to a server. Notification text stays in memory and is not written to diagnostics. Preferences stay on your Mac.
+Psst reads visible Notification Center banners through Accessibility. It does not record your screen, read your chat history, request notification APIs from Claude/Codex, or send data to a server. By default notification text stays in memory; only app, time and read state persist in `~/Library/Application Support/Psst/inbox.json`. You can opt into saving message text locally. Turning that option off removes saved text from disk. Diagnostics never include message text. Preferences stay on your Mac.
+
+Meeting detection inspects Accessibility labels in supported browsers and Zoom for active leave/end-call controls. It does not use screen recording, microphone recording or a calendar account. It is a heuristic: hidden tabs, non-English controls and app updates may prevent detection. Manual Quiet mode remains available. A detected call stays quiet for 60 seconds after its controls disappear. This release has not yet been verified in a real Meet/Zoom call. Saved tray items open the source app; they cannot reliably recover an expired chat-specific notification action.
 
 Diagnostics contain event names, counters, source-app names, timing and runtime status in `~/Library/Logs/Psst/`. Notification Center’s Accessibility structure is not a stable public integration contract, so macOS updates can affect capture. Standard macOS banners must stay enabled. Reply buttons and other original notification actions are not reproduced.
 

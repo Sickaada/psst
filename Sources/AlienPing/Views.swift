@@ -35,7 +35,7 @@ struct PingView: View {
     private var secondary:Color { Color(hex:scheme == .dark ? (isCodex ? "A9C5DA" : "C6B6A5") : (isCodex ? "516B82" : "806D5B")) }
     private var paper:Color { Color(hex:scheme == .dark ? (isCodex ? "142B3E" : "302A25") : (isCodex ? "EDF6FF" : "FFF8ED")) }
     private var edge:Color { Color(hex:scheme == .dark ? (isCodex ? "31536D" : "514439") : (isCodex ? "D0E3F5" : "EDDEC9")) }
-    private var accent:Color { isCodex ? Color(hex:scheme == .dark ? "8CCBFF" : "276AA3") : (scheme == .dark ? color : Color(hex:"9C4D2B")) }
+    private var accent:Color { scheme == .dark ? color : Color(nsColor:(NSColor(color).blended(withFraction:0.38,of:.black) ?? NSColor(color))) }
     var body: some View {
         ZStack(alignment:.topTrailing) {
             Button(action:open) {
@@ -54,7 +54,7 @@ struct PingView: View {
                     Spacer(minLength:3)
                     HStack(spacing:6) {
                         Spacer()
-                        Text(ping.openNotification == nil ? "Open \(ping.source.rawValue)" : "Open chat")
+                        Text(ping.actionLabel ?? (ping.openNotification == nil ? "Open \(ping.source.rawValue)" : "Open chat"))
                         Image(systemName:"arrow.up.right").font(.system(size:10,weight:.medium))
                     }.font(.system(size:12,weight:.medium)).foregroundStyle(accent)
                 }
@@ -101,6 +101,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Meet your messenger").font(.system(size: 23, weight: .semibold))
                         Text("Make every arrival feel different.").foregroundStyle(.secondary)
+                        Button("Tray, quiet mode & personalization") { model.attention.showInbox?() }.buttonStyle(.link)
                     }
                     Spacer()
                     Toggle("Enabled", isOn: $model.enabled).toggleStyle(.switch).labelsHidden().help("Enable live notifications")

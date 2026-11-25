@@ -1,0 +1,10 @@
+# Psst attention update
+
+Approved scope: missed-item tray, burst summaries, automatic Meet/Zoom quiet mode with override, per-app personalization, README images/animations. Implement inline; retain existing signing, login startup, notifications and eight-style defaults.
+
+1. AlienCore/Attention.swift: Codable inbox entries/preferences, bounded local persistence with optional content stripping, burst/quiet delivery policy, conservative meeting evidence. Test stale items, duplicates by ID, redaction, resume-once summaries and false-positive landing pages.
+2. AlienPing/AttentionController.swift: record every accepted live notification, hold a 2-second bounded batch, defer while away/quiet, show one catch-up, never persist AX references. Saved items open app honestly. Main menu opens tray; unread count remains visible.
+3. AlienPing/MeetingMonitor.swift: bounded background Accessibility scan of supported browser/Zoom windows for context plus real leave/end controls. No screenshots, URL/message storage or call recording. Unknown scans expire their last positive evidence after 60 seconds; expose limitations/manual override. Poll idle via Quartz event time, observe session sleep/activation. Native banners may still interrupt unless experimental suppression succeeds.
+4. InboxView and PersonalizationView: tray grouped by app with read/unread, clear, privacy controls; per-app characters/colors/style subset/edge subset plus calm/playful presets. Cannot disable every style or edge.
+5. Core Mascot: configurable shuffle and edge sampling; default preserves all eight/all edges. Test exclusions and single-style choices. Integrate calm mode without overriding system Reduce Motion.
+6. Validate core/pipeline tests, core burst/quiet-resume fixtures and live companion preview checks, native offscreen renders. Meeting fixture tests are not real-call validation; report that boundary. Publish README images and animated sprite GIFs with accurate captions. Build/install 0.8.0 via stable signing, commit/push and package a preview release.

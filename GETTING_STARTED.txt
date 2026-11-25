@@ -1,4 +1,4 @@
-Psst 0.7.0 — little messengers for your Mac
+Psst 0.8.0 — little messengers for your Mac
 
 REQUIRES
 macOS 14 or newer. Apple Silicon and Intel supported.
@@ -46,3 +46,5 @@ is experimental and off by default. Not tested on every supported Mac.
 SOURCE, RELEASES AND ISSUES
 https://github.com/Sickaada/psst
 Independent community software; not affiliated with Anthropic or OpenAI.
+
+The sparkle menu opens your notification tray. Quiet & personal controls meeting/away quiet mode, local message storage, companion styles and entry edges. Meeting detection is experimental; manual Quiet mode is available.

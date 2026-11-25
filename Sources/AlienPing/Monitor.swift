@@ -150,7 +150,7 @@ final class NotificationMonitor {
             phase(model.trusted ? "paused" : "permission_required", message: model.trusted ? "Paused. Previews still work." : "Accessibility access is required. Click Connect to enable Psst.")
             restore(); tracker = PresenceTracker(); return
         }
-        if !model.replace { restore() }
+        if !model.replace && !model.attention.isQuiet { restore() }
         guard !busy else { return }
         guard let process = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.notificationcenterui").first else {
             phase("waiting_for_process", message: "Waiting for macOS Notification Center…"); return
@@ -220,11 +220,11 @@ final class NotificationMonitor {
                         Diagnostics.shared.event("source_disabled", ["app": ping.source.rawValue]); continue
                     }
                     self.received += 1; self.lastSource = ping.source.rawValue
-                    self.model.overlay.enqueue(ping)
+                    self.model.attention.receive(ping)
                     self.model.status = "Received \(self.received) · Last: \(ping.source.rawValue) at \(Date().formatted(date: .omitted, time: .shortened))."
                     Diagnostics.shared.event("notification_received", ["app": ping.source.rawValue, "count": self.received])
                     self.lastStateWrite = .distantPast; self.phase("listening")
-                    if self.model.replace && compact && !self.moved.contains(where: { CFEqual($0.0, window) }), let original = frame(window)?.origin {
+                    if (self.model.replace || self.model.attention.isQuiet) && compact && !self.moved.contains(where: { CFEqual($0.0, window) }), let original = frame(window)?.origin {
                         var point = CGPoint(x: -20000, y: -20000)
                         if let value = AXValueCreate(.cgPoint, &point) {
                             let result = AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, value)

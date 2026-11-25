@@ -33,11 +33,12 @@ final class OverlayController {
             let dismiss:()->Void = { [weak self] in self?.dismiss(id) }
             panel.contentView=NSHostingView(rootView:PingView(ping:ping,color:model.color(ping.source),hideText:model.hideText,open:{[weak self] in self?.model.openPing(ping);dismiss()},dismiss:dismiss))
             cards[id]=(panel,anchor,ping,slot);panel.orderFrontRegardless()
-            let name=ping.source == .claude ? "sunburst" : "terminal"
+            let preference=model.attention.preference(ping.source)
+            let name=preference.character
             Diagnostics.shared.event("overlay_displayed",["app":ping.source.rawValue,"preview":ping.preview,"character":name,"slot":slot,"randomPerimeter":true,"cardStyle":"speech_bubble"])
             Diagnostics.shared.event("message_presented",["app":ping.source.rawValue,"preview":ping.preview])
             MascotDirector.shared.holdDuration=model.duration
-            summonMascot(named:name,at:anchor) { [weak self] in self?.finish(id) }
+            MascotDirector.shared.summon(named:name,at:anchor,styles:preference.styles,edges:preference.edges,calm:preference.calm) { [weak self] in self?.finish(id) }
             MascotDirector.shared.setHoverRect(frame,at:anchor)
         }
     }

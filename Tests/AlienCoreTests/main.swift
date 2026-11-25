@@ -184,3 +184,46 @@ XCTAssertEqual(NotificationOpenAction.select(["Name: Close\nIdentifier: close","
 XCTAssertNil(NotificationOpenAction.select(["Name: Close\nIdentifier: Open","AXShowMenu"]))
 XCTAssertNil(NotificationOpenAction.select([]))
 print("Notification open action selection passed")
+
+let now=Date(timeIntervalSince1970:1000000)
+var inbox=InboxState()
+let missed=InboxEntry(source:.claude,title:"Private title",body:"Private text",date:now)
+inbox.insert(missed,now:now);inbox.insert(missed,now:now)
+XCTAssertEqual(inbox.entries.count,1)
+let scrubbed=try JSONDecoder().decode(InboxState.self,from:inbox.encoded(storeContent:false))
+XCTAssertEqual(scrubbed.entries[0].title,"")
+XCTAssertEqual(scrubbed.entries[0].body,"")
+inbox.markRead(missed.id);XCTAssertEqual(inbox.unreadCount,0)
+inbox.prune(now:now.addingTimeInterval(8*86400));XCTAssertEqual(inbox.entries.count,0)
+var delivery=AttentionQueue()
+delivery.enqueue(missed.id,at:0,quiet:false)
+XCTAssertEqual(delivery.flush(at:1,quiet:false).count,0)
+XCTAssertEqual(delivery.flush(at:2.1,quiet:false),[missed.id])
+delivery.enqueue(missed.id,at:3,quiet:true)
+XCTAssertEqual(delivery.flush(at:20,quiet:true).count,0)
+XCTAssertEqual(delivery.flush(at:21,quiet:false),[missed.id])
+XCTAssertEqual(delivery.flush(at:22,quiet:false).count,0)
+XCTAssertEqual(MeetingEvidence.active(context:"Google Meet",buttons:["Join now"]),false)
+XCTAssertEqual(MeetingEvidence.active(context:"Google Meet",buttons:["Leave call"]),true)
+XCTAssertEqual(MeetingEvidence.active(context:"Zoom Meeting",buttons:["Leave Meeting"]),true)
+XCTAssertEqual(MeetingEvidence.active(context:"Unrelated document",buttons:["Leave call"]),false)
+print("Inbox privacy, burst/quiet delivery and meeting evidence passed")
+for edge in ScreenEdge.allCases {
+    for seed in 1...30 {
+        let flight=MascotFlight(bounds:screen,anchor:screen.origin,seed:UInt64(seed),edges:[edge])
+        switch edge {
+        case .left:XCTAssertEqual(flight.start.x,screen.minX)
+        case .right:XCTAssertEqual(flight.start.x,screen.maxX)
+        case .top:XCTAssertEqual(flight.start.y,screen.maxY)
+        case .bottom:XCTAssertEqual(flight.start.y,screen.minY)
+        }
+    }
+}
+var subset=MascotStyleBag()
+for _ in 0..<30 { XCTAssertEqual(subset.next(styles:[.portal]),.portal) }
+for _ in 0..<50 { XCTAssertEqual([MascotStyle.portal,.floating].contains(subset.next(styles:[.portal,.floating])),true) }
+for _ in 0..<250 { inbox.insert(InboxEntry(source:.codex,title:"test",body:"test",date:now),now:now) }
+XCTAssertEqual(inbox.entries.count,200)
+let restored=try JSONDecoder().decode(InboxState.self,from:inbox.encoded(storeContent:true))
+XCTAssertEqual(restored.entries.first?.body,"test")
+print("Selected edges, style filtering, retention cap and opt-in persistence passed")

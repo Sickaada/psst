@@ -47,14 +47,18 @@ public struct MascotManifest: Codable {
     }
 }
 
-public enum MascotStyle: String, CaseIterable { case running, chasing, parkour, delivery, portal, peekaboo, celebration, floating }
+public enum MascotStyle: String, CaseIterable, Codable { case running, chasing, parkour, delivery, portal, peekaboo, celebration, floating }
 public struct MascotStyleBag {
     private var bag:[MascotStyle]=[]
     private var previous:MascotStyle?
     public init() {}
-    public mutating func next() -> MascotStyle {
+    private var allowed:[MascotStyle]=MascotStyle.allCases
+    public mutating func next(styles:[MascotStyle]=MascotStyle.allCases) -> MascotStyle {
+        let choices=MascotStyle.allCases.filter{styles.contains($0)}
+        let valid=choices.isEmpty ? MascotStyle.allCases : choices
+        if valid != allowed { allowed=valid;bag=[] }
         if bag.isEmpty {
-            bag=MascotStyle.allCases.shuffled()
+            bag=allowed.shuffled()
             if bag.last == previous { bag.swapAt(0,bag.count-1) }
         }
         let value=bag.removeLast();previous=value;return value
@@ -82,19 +86,22 @@ public struct MascotFlight {
     public let hold: Double
     public let departure: Double = 0.8
     public var duration: Double { entrance + hold + departure }
-    public init(bounds: CGRect, anchor requested: CGPoint, seed: UInt64, hold: Double = 2.4, style: MascotStyle = .running) {
+    public init(bounds: CGRect, anchor requested: CGPoint, seed: UInt64, hold: Double = 2.4, style: MascotStyle = .running, edges:[ScreenEdge]=ScreenEdge.allCases) {
         self.style=style;self.bounds=bounds
         let safe = bounds.insetBy(dx:min(60,bounds.width/4),dy:min(60,bounds.height/4))
         anchor = CGPoint(x:min(safe.maxX,max(safe.minX,requested.x)),y:min(safe.maxY,max(safe.minY,requested.y)))
         var rng=seed
         func roll() -> CGFloat { rng = rng &* 6364136223846793005 &+ 1442695040888963407; return CGFloat(Double(rng >> 11)/9007199254740992.0) }
         let edge=bounds
-        let perimeter=2*(edge.width+edge.height)
-        let distance=roll()*perimeter
-        if distance < edge.width { start=CGPoint(x:edge.minX+distance,y:edge.minY) }
-        else if distance < edge.width+edge.height { start=CGPoint(x:edge.maxX,y:edge.minY+distance-edge.width) }
-        else if distance < 2*edge.width+edge.height { start=CGPoint(x:edge.maxX-(distance-edge.width-edge.height),y:edge.maxY) }
-        else { start=CGPoint(x:edge.minX,y:edge.maxY-(distance-2*edge.width-edge.height)) }
+        let allowed=ScreenEdge.allCases.filter{edges.contains($0)}
+        let choices=allowed.isEmpty ? ScreenEdge.allCases : allowed
+        let selected=choices[min(choices.count-1,Int(roll()*CGFloat(choices.count)))],along=roll()
+        switch selected {
+        case .left:start=CGPoint(x:edge.minX,y:edge.minY+along*edge.height)
+        case .right:start=CGPoint(x:edge.maxX,y:edge.minY+along*edge.height)
+        case .top:start=CGPoint(x:edge.minX+along*edge.width,y:edge.maxY)
+        case .bottom:start=CGPoint(x:edge.minX+along*edge.width,y:edge.minY)
+        }
         let away: CGFloat = start.x > anchor.x ? 1 : -1
         control=CGPoint(x:min(safe.maxX,max(safe.minX,anchor.x+away*min(150,safe.width/3))),y:anchor.y)
         end=CGPoint(x:start.x > safe.midX ? safe.minX : safe.maxX,y:safe.minY+roll()*safe.height)

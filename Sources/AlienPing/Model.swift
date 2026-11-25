@@ -26,6 +26,7 @@ struct Ping {
     let source: SourceApp
     let title: String
     let body: String
+    var actionLabel:String? = nil
     var preview = false
     var openNotification: (() -> Void)? = nil
 }
@@ -45,6 +46,7 @@ final class Model: ObservableObject {
     @Published var disabled: [String] { didSet { UserDefaults.standard.set(disabled, forKey: "disabled") } }
     var overlay: OverlayController!
     var monitor: NotificationMonitor!
+    var attention: AttentionController!
     init() {
         let d = UserDefaults.standard
         enabled = d.object(forKey: "enabled") as? Bool ?? true
@@ -57,6 +59,7 @@ final class Model: ObservableObject {
         disabled = d.stringArray(forKey: "disabled") ?? []
         overlay = OverlayController(model: self)
         monitor = NotificationMonitor(model: self)
+        attention = AttentionController(model:self)
         refreshApplications()
     }
     func refreshApplications() {

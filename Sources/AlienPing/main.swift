@@ -8,11 +8,16 @@ final class Delegate: NSObject, NSApplicationDelegate {
     var status: NSStatusItem!
     var window: NSWindow?
     var mascotStage: MascotStageController?
+    var inboxWindow:NSWindow?
+    var unreadItem:NSMenuItem?
     var terminationSignal: DispatchSourceSignal?
     func applicationDidFinishLaunching(_ notification: Notification) {
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         status.button?.image = NSImage(systemSymbolName: "sparkle", accessibilityDescription: "Psst")
         let menu=NSMenu()
+        let trayItem=NSMenuItem(title:"Notification tray",action:#selector(showInbox),keyEquivalent:"i");trayItem.target=self;unreadItem=trayItem;menu.addItem(trayItem)
+        let quietItem=NSMenuItem(title:"Toggle quiet mode",action:#selector(toggleQuiet),keyEquivalent:"d");quietItem.target=self;menu.addItem(quietItem)
+        menu.addItem(.separator())
         let stageItem=NSMenuItem(title:"Mascot Stage",action:#selector(showMascotStage),keyEquivalent:"m");stageItem.target=self
         menu.addItem(stageItem)
         let settingsItem=NSMenuItem(title:"Psst Settings",action:#selector(showSettings),keyEquivalent:",");settingsItem.target=self
@@ -26,6 +31,13 @@ final class Delegate: NSObject, NSApplicationDelegate {
         terminationSignal?.resume()
         DistributedNotificationCenter.default().addObserver(self,selector:#selector(showMascotStage),name:NSNotification.Name("local.alienping.showMascotStage"),object:nil)
         _ = SpriteLibrary.shared
+        model.attention.showInbox = { [weak self] in self?.showInbox() }
+        model.attention.onCountChanged = { [weak self] count in
+            self?.unreadItem?.title = count == 0 ? "Notification tray" : "Notification tray (\(count) unread)"
+            self?.status.length = count == 0 ? NSStatusItem.squareLength : NSStatusItem.variableLength
+            self?.status.button?.title = count == 0 ? "" : " \(count)"
+        }
+        model.attention.start()
         model.monitor.start()
         if CommandLine.arguments.contains("-mascotPreview") { showMascotStage() }
         else if !CommandLine.arguments.contains("--login-item") { showSettings() }
@@ -38,6 +50,15 @@ final class Delegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--preview") {
             DispatchQueue.main.asyncAfter(deadline: .now()+1) { self.model.preview() }
         }
+    }
+    @objc func toggleQuiet() { model.attention.quietMode = model.attention.quietMode == "Quiet" ? "Automatic" : "Quiet" }
+    @objc func showInbox() {
+        if inboxWindow == nil {
+            let w=NSWindow(contentRect:NSRect(x:0,y:0,width:640,height:680),styleMask:[.titled,.closable,.resizable,.miniaturizable],backing:.buffered,defer:false)
+            w.title="Psst · Your notifications";w.isReleasedWhenClosed=false;w.minSize=NSSize(width:560,height:580)
+            w.contentView=NSHostingView(rootView:AttentionView(attention:model.attention,model:model));w.center();inboxWindow=w
+        }
+        inboxWindow?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
     }
     @objc func showMascotStage() {
         if mascotStage == nil { mascotStage=MascotStageController() }
@@ -56,9 +77,13 @@ final class Delegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
-    func applicationWillTerminate(_ notification: Notification) { model.monitor.stop() }
+    func applicationWillTerminate(_ notification: Notification) { model.monitor.stop();model.attention.stop() }
 }
 let app = NSApplication.shared
+if let index=CommandLine.arguments.firstIndex(of:"--render-readme"),CommandLine.arguments.count>index+1 {
+    do { try MainActor.assumeIsolated { try ReadmePreview.render(to:URL(fileURLWithPath:CommandLine.arguments[index+1])) };exit(0) }
+    catch { fputs("Render failed: \(error)\n",stderr);exit(1) }
+}
 if CommandLine.arguments.contains("--diagnostics") {
     // Report the running app's state, not this CLI process's TCC attribution.
     let state = Diagnostics.shared.stateURL
