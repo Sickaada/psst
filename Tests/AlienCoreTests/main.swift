@@ -246,3 +246,34 @@ XCTAssertEqual(FocusedChat(source:.codex,titles:["Task completed"]).matches(sour
 XCTAssertEqual(FocusedChat(source:.claude,titles:["Claude"]).matches(source:.claude,title:"Claude",body:""),false)
 XCTAssertEqual(FocusedChat(source:.codex,titles:[]).matches(source:.codex,title:"Notification vine refinement",body:""),false)
 print("Foreground chat matching rejects other apps/chats, generic titles and arbitrary body mentions")
+
+let storageDirectory=FileManager.default.temporaryDirectory.appendingPathComponent("PsstStorageTests-"+UUID().uuidString)
+do {
+    defer { try? FileManager.default.removeItem(at:storageDirectory) }
+    try FileManager.default.createDirectory(at:storageDirectory,withIntermediateDirectories:true)
+    var original=InboxState()
+    let saved=InboxEntry(source:.codex,title:"Persistent chat",body:"Unicode 🌱 and 'quoted' text",read:true)
+    original.insert(saved)
+    let legacy=storageDirectory.appendingPathComponent("inbox.json")
+    try original.encoded(storeContent:true).write(to:legacy)
+    do {
+        let store=try NotificationStore(directory:storageDirectory,storeContent:true)
+        XCTAssertEqual(try store.load().entries,original.entries)
+        XCTAssertEqual(FileManager.default.fileExists(atPath:legacy.path),false)
+    }
+    do {
+        let reopened=try NotificationStore(directory:storageDirectory,storeContent:true)
+        XCTAssertEqual(try reopened.load().entries,original.entries)
+        try reopened.save(original,storeContent:false)
+        XCTAssertEqual(try reopened.load().entries.first?.body,"")
+        XCTAssertEqual(try reopened.load().entries.first?.read,true)
+        try reopened.save(InboxState(),storeContent:true)
+    }
+    // A leftover old file must not resurrect cleared notifications.
+    try original.encoded(storeContent:true).write(to:legacy)
+    let cleared=try NotificationStore(directory:storageDirectory,storeContent:true)
+    XCTAssertEqual(try cleared.load().entries.count,0)
+    let attributes=try FileManager.default.attributesOfItem(atPath:cleared.url.path)
+    XCTAssertEqual((attributes[.posixPermissions] as? NSNumber)?.intValue,0o600)
+    print("SQLite migration, restart persistence, privacy scrubbing, read state, clear and file permissions passed")
+} catch { print("FAIL: SQLite storage: \(error)");exit(1) }

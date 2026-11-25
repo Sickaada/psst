@@ -45,7 +45,7 @@ final class VineController {
         guard let panel,let screen=NSScreen.screens.first else { return }
         guard state.enabled else { panel.orderOut(nil);return }
         let count=VineSummary.previewable(model.attention.inbox.entries).count
-        let expanded=state.expanded && count>0 && !model.attention.isQuiet
+        let expanded=state.visible(hasItems:count>0,quiet:model.attention.isQuiet)
         let area=screen.visibleFrame
         let height=expanded ? area.height-24 : 116
         let width:CGFloat=expanded ? min(372,area.width) : 76

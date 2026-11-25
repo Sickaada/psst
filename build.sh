@@ -19,8 +19,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleIdentifier</key><string>local.alienping.mac</string>
 <key>CFBundleExecutable</key><string>AlienPing</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.8.5</string>
-<key>CFBundleVersion</key><string>21</string>
+<key>CFBundleShortVersionString</key><string>0.8.6</string>
+<key>CFBundleVersion</key><string>22</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>

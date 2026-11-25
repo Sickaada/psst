@@ -4,6 +4,12 @@ import AlienCore
 final class VineState: ObservableObject {
     @Published var enabled:Bool { didSet { defaults.set(enabled,forKey:"vineEnabled") } }
     @Published var expanded:Bool { didSet { defaults.set(expanded,forKey:"vineExpanded") } }
+    @Published var manuallyExpanded=false
+    func visible(hasItems:Bool,quiet:Bool)->Bool { expanded && (manuallyExpanded || (hasItems && !quiet)) }
+    func toggle(hasItems:Bool,quiet:Bool) {
+        let next = !visible(hasItems:hasItems,quiet:quiet)
+        manuallyExpanded=next;expanded=next
+    }
     private let defaults:UserDefaults
     init(defaults:UserDefaults = .standard) {
         self.defaults=defaults
@@ -53,7 +59,7 @@ struct VineView:View {
     var targetsChanged:([VineHitTarget])->Void = {_ in}
     private let ink=Color(hex:"303730")
     private var unread:[InboxEntry] { VineSummary.previewable(attention.inbox.entries) }
-    private var isExpanded:Bool { state.expanded && !unread.isEmpty && !attention.isQuiet }
+    private var isExpanded:Bool { state.visible(hasItems:!unread.isEmpty,quiet:attention.isQuiet) }
     var body:some View {
         Group {
             if isExpanded { expanded }
@@ -83,6 +89,12 @@ struct VineView:View {
             GeometryReader { space in
                 ScrollView {
                     VStack(alignment:.leading,spacing:0) {
+                        if unread.isEmpty {
+                            VStack(alignment:.leading,spacing:8) {
+                                Text("No saved previews yet").font(.system(size:15,weight:.medium))
+                                Text("New notifications with message text will appear here. Older alerts without saved text stay in your tray.").font(.system(size:12)).foregroundStyle(ink.opacity(0.7))
+                            }.padding(18).background(Color(hex:"FAFCF7"),in:RoundedRectangle(cornerRadius:14)).padding(.leading,56).padding(.trailing,12)
+                        }
                         ForEach(VineSummary.recent(unread)) { entry in
                             row(entry).frame(minHeight:max(112,(space.size.height-16)/CGFloat(max(1,min(6,unread.count)))))
                         }
@@ -128,9 +140,7 @@ struct VineView:View {
     }
     private var compactControl:some View {
         Button {
-            if isExpanded { state.expanded=false }
-            else if attention.isQuiet || unread.isEmpty { attention.showInbox?() }
-            else { state.expanded=true }
+            state.toggle(hasItems:!unread.isEmpty,quiet:attention.isQuiet)
         } label:{
             VStack(spacing:5) {
                 Image(systemName:attention.isQuiet ? "moon":"chevron.\(isExpanded ? "left":"right")").font(.system(size:18,weight:.semibold))
@@ -140,7 +150,7 @@ struct VineView:View {
                 .background(Color(hex:"FAFCF7"),in:RoundedRectangle(cornerRadius:18))
                 .shadow(color:.black.opacity(0.14),radius:8,y:3).contentShape(RoundedRectangle(cornerRadius:18))
         }.buttonStyle(.plain)
-            .accessibilityLabel(isExpanded ? "Collapse notification vine" : (unread.isEmpty ? "Open notification tray":"Expand notification vine"))
+            .accessibilityLabel(isExpanded ? "Collapse notification vine" : "Expand notification vine")
             .help(isExpanded ? "Collapse notifications" : "Open notifications")
     }
 

@@ -24,6 +24,10 @@ enum VineVerification {
         }
         settle()
         try require(controller.layoutEvidence.frame.width==76,"Empty vine must be compact")
+        controller.state.toggle(hasItems:false,quiet:false);settle()
+        try require(controller.layoutEvidence.frame.width==372,"Empty compact button must expand the vine, not open the tray")
+        controller.state.toggle(hasItems:false,quiet:false)
+        controller.state.expanded=true
         let first=InboxEntry(source:.claude,title:"Fixture",body:"")
         model.attention.inbox.insert(first)
         settle()

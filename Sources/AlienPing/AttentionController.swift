@@ -23,7 +23,7 @@ final class AttentionController: ObservableObject {
     private var observers:[NSObjectProtocol]=[]
     let meetings=MeetingMonitor()
     private let focusedChat=FocusedChatMonitor()
-    private let file:URL
+    private var store:NotificationStore?
     init(model:Model,directory:URL?=nil) {
         self.model=model
         let d=UserDefaults.standard
@@ -33,11 +33,11 @@ final class AttentionController: ObservableObject {
         storeContent=d.bool(forKey:"storeInboxContent")
         preferences=(d.data(forKey:"companions").flatMap { try? JSONDecoder().decode([String:CompanionPreferences].self,from:$0) }) ?? [:]
         let folder=directory ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Psst")
-        file=folder.appendingPathComponent("inbox.json")
         do {
-            try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])
-            if FileManager.default.fileExists(atPath:file.path) { inbox=try JSONDecoder().decode(InboxState.self,from:Data(contentsOf:file));inbox.prune() }
-        } catch { storageError="Couldn’t load the saved tray. New notifications will still appear." }
+            let loaded=try NotificationStore(directory:folder,storeContent:storeContent)
+            inbox=try loaded.load()
+            store=loaded
+        } catch { storageError="Couldn’t load the saved tray. Existing history has been kept untouched." }
     }
     func start() {
         if autoMeetings { meetings.start() }
@@ -86,7 +86,7 @@ final class AttentionController: ObservableObject {
     func open(_ entry:InboxEntry) { markRead(entry.id);model.openSource(entry.source) }
     private func save() {
         onCountChanged?(inbox.unreadCount)
-        do { try inbox.encoded(storeContent:storeContent).write(to:file,options:.atomic);try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:file.path);storageError="" }
+        do { guard let store else { return };try store.save(inbox,storeContent:storeContent);storageError="" }
         catch { storageError="Couldn’t save the tray. Check available disk space." }
     }
     private func tick() {
