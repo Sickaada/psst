@@ -27,10 +27,11 @@ enum VineVerification {
         let first=InboxEntry(source:.claude,title:"Fixture",body:"")
         model.attention.inbox.insert(first)
         settle()
-        try require(controller.layoutEvidence.frame.width==420,"Unread item must expand the vine")
+        try require(controller.layoutEvidence.frame.width==372,"Unread item must expand the vine")
         try require(controller.layoutEvidence.targets.count>=3,"Header, notification and tray controls must expose hit targets")
         try require(!controller.layoutEvidence.targets.contains{$0.contains(CGPoint(x:10,y:100))},"Decorative stem must pass clicks through")
-        try require(!controller.layoutEvidence.targets.contains{$0.contains(CGPoint(x:417,y:100))},"Transparent trailing margin must pass clicks through")
+        try require(!controller.layoutEvidence.targets.contains{$0.contains(CGPoint(x:369,y:100))},"Transparent trailing margin must pass clicks through")
+        try require(controller.layoutEvidence.targets.contains{$0.width>=52 && $0.contains(CGPoint(x:26,y:controller.layoutEvidence.frame.height/2))},"Large compact button must be centered vertically")
         model.attention.markRead(first.id);settle()
         try require(controller.layoutEvidence.frame.width==76,"Mark read must remove the final leaf")
         for i in 0..<200 { model.attention.inbox.insert(InboxEntry(source:i%2==0 ? .claude:.codex,title:"Sample \(i)",body:"")) }

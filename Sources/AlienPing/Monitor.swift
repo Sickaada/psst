@@ -101,7 +101,7 @@ final class NotificationMonitor {
             Diagnostics.shared.event("monitor_state", ["state": phase, "trusted": model.trusted, "enabled": model.enabled])
             lastPhase = phase
         }
-        if let message, changed || received == 0 { model.status = message }
+        if let message, (changed || received == 0) && model.status != message { model.status = message }
         if changed || Date().timeIntervalSince(lastStateWrite) >= 5 {
             lastStateWrite = Date()
             Diagnostics.shared.state(["state": phase, "trusted": model.trusted, "enabled": model.enabled, "hideOriginal": model.replace, "received": received, "lastSource": lastSource, "apps": model.availableApps.map(\.rawValue), "codexNamedChatGPT": model.sourceAliases["chatgpt"] == .codex])
@@ -144,7 +144,8 @@ final class NotificationMonitor {
     }
     private func tick() {
         guard !stopped else { return }
-        model.trusted = AXIsProcessTrusted()
+        let trusted=AXIsProcessTrusted()
+        if model.trusted != trusted { model.trusted=trusted }
         guard model.trusted, model.enabled else {
             if !model.enabled { model.overlay.stop() }
             phase(model.trusted ? "paused" : "permission_required", message: model.trusted ? "Paused. Previews still work." : "Accessibility access is required. Click Connect to enable Psst.")

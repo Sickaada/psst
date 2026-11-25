@@ -86,6 +86,10 @@ final class Delegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) { vine?.stop();model.monitor.stop();model.attention.stop() }
 }
 let app = NSApplication.shared
+if let index=CommandLine.arguments.firstIndex(of:"--render-vine-motion"),CommandLine.arguments.count>index+1 {
+    do { try MainActor.assumeIsolated { try VineMotionPreview.render(to:URL(fileURLWithPath:CommandLine.arguments[index+1])) };exit(0) }
+    catch { fputs("Motion render failed: \(error)\n",stderr);exit(1) }
+}
 if CommandLine.arguments.contains("--verify-vine") {
     do { try VineVerification.run();exit(0) }
     catch { fputs("Vine verification failed: \(error.localizedDescription)\n",stderr);exit(1) }

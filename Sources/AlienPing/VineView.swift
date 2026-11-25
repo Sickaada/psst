@@ -30,18 +30,18 @@ private extension View {
     }
 }
 struct VineStem:View {
+    private static let artwork:NSImage? = {
+        let url=Bundle.main.url(forResource:"vine-botanical",withExtension:"png") ?? URL(fileURLWithPath:FileManager.default.currentDirectoryPath).appendingPathComponent("Resources/vine-botanical.png")
+        return NSImage(contentsOf:url)
+    }()
     var body:some View {
-        Canvas { ctx,size in
-            var stem=Path();stem.move(to:CGPoint(x:27,y:size.height+8))
-            var y=size.height
-            while y > -100 {
-                stem.addCurve(to:CGPoint(x:27,y:y-100),control1:CGPoint(x:2,y:y-30),control2:CGPoint(x:49,y:y-75));y-=100
-            }
-            ctx.stroke(stem,with:.color(Color(hex:"64774F")),style:StrokeStyle(lineWidth:3.4,lineCap:.round))
-            ctx.stroke(stem.offsetBy(dx:1,dy:0),with:.color(Color(hex:"B5C58A").opacity(0.75)),lineWidth:1)
-            for i in 0..<Int(size.height/96) {
-                let r=CGRect(x:i%2==0 ? 8:29,y:CGFloat(i)*96+24,width:17,height:25)
-                ctx.fill(VineLeaf().path(in:r),with:.linearGradient(Gradient(colors:[Color(hex:"C6D39A"),Color(hex:"718A4F")]),startPoint:r.origin,endPoint:CGPoint(x:r.maxX,y:r.maxY)))
+        GeometryReader { space in
+            if let image=Self.artwork {
+                Image(nsImage:image).resizable().interpolation(.high)
+                    .frame(width:space.size.height*image.size.width/image.size.height,height:space.size.height)
+                    .position(x:26,y:space.size.height/2)
+            } else {
+                Path { p in p.move(to:CGPoint(x:26,y:0));p.addCurve(to:CGPoint(x:26,y:space.size.height),control1:CGPoint(x:4,y:space.size.height/3),control2:CGPoint(x:48,y:space.size.height*2/3)) }.stroke(Color(hex:"829173"),lineWidth:1.5)
             }
         }.frame(width:52).allowsHitTesting(false).accessibilityHidden(true)
     }
@@ -51,8 +51,8 @@ struct VineView:View {
     @ObservedObject var model:Model
     @ObservedObject var state:VineState
     var targetsChanged:([VineHitTarget])->Void = {_ in}
-    private let ink=Color(hex:"403B32")
-    private var unread:[InboxEntry] { attention.inbox.entries.filter{!$0.read} }
+    private let ink=Color(hex:"303730")
+    private var unread:[InboxEntry] { VineSummary.previewable(attention.inbox.entries) }
     private var isExpanded:Bool { state.expanded && !unread.isEmpty && !attention.isQuiet }
     var body:some View {
         Group {
@@ -60,22 +60,26 @@ struct VineView:View {
             else { collapsed }
         }
         .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
+        .overlay(alignment:.leading) { compactControl.vineTarget() }
         .coordinateSpace(name:"vine")
         .onPreferenceChange(VineTargets.self,perform:targetsChanged)
-        .font(.system(size:13,design:.rounded)).foregroundStyle(ink)
+        .font(.system(size:13)).foregroundStyle(ink)
         .environment(\.colorScheme,.light)
     }
     private var expanded:some View {
         VStack(spacing:0) {
             HStack(spacing:8) {
                 Button { attention.showInbox?() } label:{
-                    HStack(spacing:7) { Image(systemName:"leaf.fill").foregroundStyle(Color(hex:"748354"));Text("Psst").fontWeight(.semibold);Text("Latest \(min(6,unread.count)) · \(unread.count) unread").foregroundStyle(ink.opacity(0.65)) }
+                    HStack(spacing:8) {
+                        Image(systemName:"leaf").font(.system(size:13,weight:.medium)).foregroundStyle(Color(hex:"687D55"))
+                        Text("Notifications").font(.system(size:13,weight:.medium))
+                        Text("\(min(6,unread.count)) of \(unread.count)").font(.system(size:11)).foregroundStyle(Color(hex:"687268"))
+                    }
                 }.buttonStyle(.plain).help("Open notification tray")
                 Spacer(minLength:2)
-                Button { state.expanded=false } label:{Image(systemName:"chevron.left").frame(width:28,height:28)}.buttonStyle(.plain).help("Collapse vine").accessibilityLabel("Collapse notification vine")
             }.padding(.leading,12).padding(.trailing,5).frame(height:40)
-                .background(Color(hex:"FFF8ED"),in:Capsule()).overlay(Capsule().strokeBorder(ink.opacity(0.1)))
-                .shadow(color:.black.opacity(0.08),radius:8,y:3).vineTarget().padding(.leading,42).padding(.trailing,10).padding(.top,8).padding(.bottom,8)
+                .background(Color(hex:"FAFCF7"),in:RoundedRectangle(cornerRadius:12))
+                .shadow(color:.black.opacity(0.08),radius:8,y:2).vineTarget().padding(.leading,42).padding(.trailing,10).padding(.top,8).padding(.bottom,8)
             GeometryReader { space in
                 ScrollView {
                     VStack(alignment:.leading,spacing:0) {
@@ -85,11 +89,11 @@ struct VineView:View {
                     }.frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,8)
                 }.scrollIndicators(.hidden)
             }.background(alignment:.leading){ VineStem() }
-            Button { attention.showInbox?() } label:{Text("Open tray").font(.system(size:11,weight:.medium,design:.rounded)).padding(.horizontal,14).padding(.vertical,7)}
+            Button { attention.showInbox?() } label:{Text("View all notifications").font(.system(size:11,weight:.medium)).padding(.horizontal,14).padding(.vertical,7)}
                 .buttonStyle(.plain).background(Color(hex:"FFF8ED"),in:Capsule()).vineTarget().padding(.vertical,8)
         }
     }
-    private func accent(_ source:SourceApp)->Color { Color(hex:source == .claude ? "BC673D":"397EA3") }
+    private func accent(_ source:SourceApp)->Color { Color(hex:source == .claude ? "A8603F":"347798") }
     private func row(_ entry:InboxEntry)->some View {
         let color=accent(entry.source)
         let missing=entry.title.isEmpty && entry.body.isEmpty
@@ -97,9 +101,8 @@ struct VineView:View {
         let detail=model.hideText ? "Message preview hidden" : (missing ? "Message text wasn’t saved for this older notification." : (entry.title.isEmpty ? "" : entry.body))
         return HStack(spacing:0) {
             ZStack {
-                Path { p in p.move(to:CGPoint(x:22,y:42));p.addQuadCurve(to:CGPoint(x:52,y:23),control:CGPoint(x:42,y:45)) }.stroke(Color(hex:"748354"),lineWidth:2)
-                VineLeaf().fill(LinearGradient(colors:[color.opacity(0.6),color],startPoint:.topTrailing,endPoint:.bottomLeading)).frame(width:22,height:29).offset(x:9,y:-5)
-                Path { p in p.move(to:CGPoint(x:32,y:35));p.addLine(to:CGPoint(x:48,y:14)) }.stroke(.white.opacity(0.5),lineWidth:0.8)
+                Path { p in p.move(to:CGPoint(x:24,y:40));p.addQuadCurve(to:CGPoint(x:52,y:30),control:CGPoint(x:36,y:40)) }.stroke(Color(hex:"829173"),lineWidth:1.2)
+                VineLeaf().fill(color.opacity(0.75)).frame(width:12,height:20).offset(x:8,y:-1)
             }.frame(width:52,height:68).allowsHitTesting(false).accessibilityHidden(true)
             HStack(spacing:2) {
                 Button { attention.open(entry) } label:{
@@ -109,32 +112,79 @@ struct VineView:View {
                             Spacer()
                             Text(entry.date.formatted(date:.omitted,time:.shortened)).foregroundStyle(ink.opacity(0.55))
                         }.font(.system(size:11))
-                        Text(title).font(.system(size:15,weight:.semibold,design:.rounded)).lineLimit(2).multilineTextAlignment(.leading)
-                        if !detail.isEmpty { Text(detail).font(.system(size:13)).foregroundStyle(ink.opacity(0.75)).lineLimit(3).multilineTextAlignment(.leading) }
+                        Text(title).font(.system(size:14,weight:.medium)).lineLimit(2).multilineTextAlignment(.leading)
+                        if !detail.isEmpty { Text(detail).font(.system(size:12)).foregroundStyle(Color(hex:entry.source == .claude ? "66574D":"4C606D")).lineLimit(3).multilineTextAlignment(.leading) }
                     }.frame(maxWidth:.infinity,minHeight:46,alignment:.leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).help("Open \(entry.source.rawValue)")
-                Button { attention.markRead(entry.id) } label:{Image(systemName:"checkmark.circle").font(.system(size:18,weight:.light)).foregroundStyle(color).frame(width:32,height:44)}
+                Button { attention.markRead(entry.id) } label:{Image(systemName:"checkmark.circle").font(.system(size:16,weight:.regular)).foregroundStyle(color.opacity(0.8)).frame(width:30,height:44)}
                     .buttonStyle(.plain).help("Mark read").accessibilityLabel("Mark \(title) read")
             }.padding(.leading,14).padding(.trailing,5).padding(.vertical,12)
-                .background(Color(hex:entry.source == .claude ? "FFF6E9":"F0F8FF"),in:RoundedRectangle(cornerRadius:22))
-                .overlay(RoundedRectangle(cornerRadius:22).strokeBorder(color.opacity(0.18)))
-                .shadow(color:.black.opacity(0.07),radius:5,y:3).vineTarget(scrolled:true).padding(.trailing,12)
-        }.padding(.bottom,8)
+                .background(Color(hex:entry.source == .claude ? "FFFCF6":"F4FAFF"),in:RoundedRectangle(cornerRadius:14))
+                .shadow(color:.black.opacity(0.10),radius:10,y:3).vineTarget(scrolled:true).padding(.trailing,12)
+        }.padding(.bottom,8).modifier(VineArrival())
     }
     private var collapsed:some View {
-        ZStack(alignment:.topLeading) {
-            VineStem().frame(width:52,height:112)
-            Button {
-                if attention.isQuiet || unread.isEmpty { attention.showInbox?() } else { state.expanded=true }
-            } label:{
-                ZStack {
-                    VineLeaf().fill(LinearGradient(colors:[Color(hex:"B7CD8A"),Color(hex:"64814D")],startPoint:.topTrailing,endPoint:.bottomLeading)).frame(width:38,height:48)
-                    Text(unread.isEmpty ? "✓" : "\(unread.count)").font(.system(size:14,weight:.bold,design:.rounded)).foregroundStyle(.white).shadow(color:.black.opacity(0.18),radius:1).offset(y:2)
-                }.frame(width:48,height:60).contentShape(Rectangle())
-            }.buttonStyle(.plain).help(attention.isQuiet ? "Quiet mode · \(unread.count) unread. Open tray" : "\(unread.count) unread. Open vine")
-                .accessibilityLabel("Psst, \(unread.count) unread notifications")
-                .vineTarget().offset(x:20,y:23)
-            if attention.isQuiet { Image(systemName:"moon.fill").font(.system(size:10)).foregroundStyle(ink).padding(5).background(Color(hex:"FFF8ED"),in:Circle()).offset(x:42,y:76).allowsHitTesting(false) }
-        }.frame(width:76,height:116)
+        VineStem().frame(width:52,height:116).accessibilityHidden(true)
+    }
+    private var compactControl:some View {
+        Button {
+            if isExpanded { state.expanded=false }
+            else if attention.isQuiet || unread.isEmpty { attention.showInbox?() }
+            else { state.expanded=true }
+        } label:{
+            VStack(spacing:5) {
+                Image(systemName:attention.isQuiet ? "moon":"chevron.\(isExpanded ? "left":"right")").font(.system(size:18,weight:.semibold))
+                if !isExpanded && !unread.isEmpty { Text("\(unread.count)").font(.system(size:11,weight:.semibold)) }
+                if unread.isEmpty { Image(systemName:"leaf").font(.system(size:12)) }
+            }.foregroundStyle(Color(hex:"536B43")).frame(width:52,height:64)
+                .background(Color(hex:"FAFCF7"),in:RoundedRectangle(cornerRadius:18))
+                .shadow(color:.black.opacity(0.14),radius:8,y:3).contentShape(RoundedRectangle(cornerRadius:18))
+        }.buttonStyle(.plain)
+            .accessibilityLabel(isExpanded ? "Collapse notification vine" : (unread.isEmpty ? "Open notification tray":"Expand notification vine"))
+            .help(isExpanded ? "Collapse notifications" : "Open notifications")
+    }
+
+}
+
+// Only a newly inserted row fades; existing rows never bounce or replay their entrance.
+private struct VineReducedPreviewKey:EnvironmentKey { static let defaultValue=false }
+private struct VineStaticPreviewKey:EnvironmentKey { static let defaultValue=false }
+extension EnvironmentValues {
+    var vineReducedPreview:Bool {
+        get { self[VineReducedPreviewKey.self] }
+        set { self[VineReducedPreviewKey.self]=newValue }
+    }
+    var vineStaticPreview:Bool {
+        get { self[VineStaticPreviewKey.self] }
+        set { self[VineStaticPreviewKey.self]=newValue }
+    }
+}
+private final class VineFadeClock:ObservableObject {
+    @Published var opacity:Double=0
+    private var timer:Timer?
+    private var started=false
+    func start(immediate:Bool) {
+        guard !started else { return };started=true
+        if immediate { opacity=1;return }
+        let start=ProcessInfo.processInfo.systemUptime
+        timer=Timer.scheduledTimer(withTimeInterval:1.0/60,repeats:true) { [weak self] timer in
+            guard let self else { timer.invalidate();return }
+            let progress=min(1,(ProcessInfo.processInfo.systemUptime-start)/0.36)
+            self.opacity=1-pow(1-progress,3)
+            if progress>=1 { timer.invalidate();self.timer=nil }
+        }
+    }
+    func finish() { timer?.invalidate();timer=nil;opacity=1 }
+    deinit { timer?.invalidate() }
+}
+private struct VineArrival:ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.vineStaticPreview) private var preview
+    @Environment(\.vineReducedPreview) private var reducedPreview
+    @StateObject private var clock=VineFadeClock()
+    func body(content:Content)->some View {
+        content.opacity(preview || reduced || reducedPreview ? 1:clock.opacity)
+            .onAppear { clock.start(immediate:preview || reduced || reducedPreview) }
+            .onDisappear { clock.finish() }
     }
 }

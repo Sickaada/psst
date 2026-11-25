@@ -44,14 +44,21 @@ final class VineController {
     private func layout() {
         guard let panel,let screen=NSScreen.screens.first else { return }
         guard state.enabled else { panel.orderOut(nil);return }
-        let count=model.attention.inbox.unreadCount
+        let count=VineSummary.previewable(model.attention.inbox.entries).count
         let expanded=state.expanded && count>0 && !model.attention.isQuiet
         let area=screen.visibleFrame
         let height=expanded ? area.height-24 : 116
-        let width:CGFloat=expanded ? min(420,area.width) : 76
+        let width:CGFloat=expanded ? min(372,area.width) : 76
         let rect=NSRect(x:area.minX+4,y:area.midY-height/2,width:width,height:height)
         if panel.frame != rect { panel.setFrame(rect,display:true) }
-        if presenting && !panel.isVisible { panel.orderFrontRegardless() }
+        if presenting && !panel.isVisible {
+            panel.alphaValue=NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 1:0
+            panel.orderFrontRegardless()
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration=NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0:0.28
+                panel.animator().alphaValue=1
+            }
+        }
         let key="\(expanded)-\(count)-\(Int(area.width))-\(Int(area.height))"
         if key != lastLayout {
             lastLayout=key
