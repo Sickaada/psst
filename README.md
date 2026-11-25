@@ -22,7 +22,7 @@ These GIFs show the bundled character frames. In the app, companions also travel
 
 ![Native notification vine with sample messages](docs/images/vine.png)
 
-Unread Claude and Codex updates become orange and blue leaves along the left screen edge. Click a title to open its app or the check to mark it read. The list scrolls when it grows. Collapse it with the chevron, or hide it through **sparkle menu → Show notification vine**. Your choice survives restart. Quiet mode and an empty tray show only the small leaf badge.
+Unread Claude and Codex updates become orange and blue leaves along the left screen edge. Click a title to open its app or the check to mark it read. The vine shows up to three recent updates per app, each with its title and a two-line message preview. A “more in tray” link keeps the rest reachable. Older items whose text was not saved are grouped instead of filling the vine with generic cards. Collapse it with the chevron, or hide it through **sparkle menu → Show notification vine**. Your choice survives restart. Quiet mode and an empty tray show only the small leaf badge.
 
 ![Collapsed vine badge](docs/images/vine-collapsed.png)
 
@@ -41,7 +41,7 @@ Missed notifications stay in your tray. Bursts within two seconds become one sum
 
 ## Download and install
 
-Get **Psst-0.8.1-universal.dmg** from [Releases](https://github.com/Sickaada/psst/releases). Apple Silicon and Intel are included in one app. macOS 14 or newer is required. Notification compatibility depends on the macOS and source-app versions; this first release has not been tested on every supported Mac.
+Get **Psst-0.8.2-universal.dmg** from [Releases](https://github.com/Sickaada/psst/releases). Apple Silicon and Intel are included in one app. macOS 14 or newer is required. Notification compatibility depends on the macOS and source-app versions; this first release has not been tested on every supported Mac.
 
 1. Open the disk image and drag **Psst** into **Applications**. Eject the disk image.
 2. Open Psst from Applications. This personal/community build is locally signed, **not Apple-notarized**. If macOS blocks it, review [Apple’s instructions for opening an app from an unidentified developer](https://support.apple.com/en-us/102445). Only proceed if you trust this download. Do not disable Gatekeeper globally or install a signing certificate.

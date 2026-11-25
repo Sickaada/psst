@@ -78,7 +78,8 @@ final class AttentionController: ObservableObject {
         else if autoMeetings && meetings.active { reason="Meeting detected" }
         else if quietAway && idle >= 120 { reason="Away from your Mac" }
         else { reason="" }
-        meetingStatus=autoMeetings ? meetings.status : "Automatic meeting detection is off."
+        let currentMeetingStatus=autoMeetings ? meetings.status : "Automatic meeting detection is off."
+        if meetingStatus != currentMeetingStatus { meetingStatus=currentMeetingStatus }
         if reason != quietReason {
             quietReason=reason
             if !reason.isEmpty {
@@ -87,7 +88,8 @@ final class AttentionController: ObservableObject {
             }
             Diagnostics.shared.event("quiet_mode_changed",["quiet":!reason.isEmpty])
         }
-        let oldCount=inbox.entries.count;inbox.prune();if oldCount != inbox.entries.count { save() }
+        var pruned=inbox;pruned.prune()
+        if pruned.entries.count != inbox.entries.count { inbox=pruned;save() }
         let valid=Set(inbox.entries.map(\.id));live=live.filter{valid.contains($0.key)}
         guard model.enabled else { return }
         let wasDeferred=queue.deferred

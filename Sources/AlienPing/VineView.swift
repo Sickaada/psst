@@ -78,16 +78,28 @@ struct VineView:View {
                 .shadow(color:.black.opacity(0.08),radius:8,y:3).vineTarget().padding(.leading,42).padding(.trailing,10).padding(.top,8).padding(.bottom,8)
             ScrollView {
                 VStack(alignment:.leading,spacing:0) {
-                    ForEach([SourceApp.claude,.codex]) { source in
-                        let entries=unread.filter{$0.source==source}
-                        if !entries.isEmpty {
-                            HStack(spacing:7) {
-                                Image(systemName:source == .claude ? "sun.max.fill":"terminal.fill")
-                                Text(source.rawValue).fontWeight(.semibold)
-                                Text("\(entries.count)").foregroundStyle(ink.opacity(0.5))
-                            }.foregroundStyle(accent(source)).padding(.horizontal,12).padding(.vertical,7)
-                                .background(Color(hex:"FFF8ED"),in:Capsule()).padding(.leading,45).padding(.top,12).padding(.bottom,8)
-                            ForEach(entries) { entry in row(entry) }
+                    ForEach(VineSummary.groups(unread),id:\.source) { group in
+                        HStack(spacing:7) {
+                            Image(systemName:group.source == .claude ? "sun.max.fill":"terminal.fill")
+                            Text(group.source.rawValue).fontWeight(.semibold)
+                            Text("\(group.totalCount)").foregroundStyle(ink.opacity(0.5))
+                        }.foregroundStyle(accent(group.source)).padding(.horizontal,12).padding(.vertical,7)
+                            .background(Color(hex:"FFF8ED"),in:Capsule()).padding(.leading,45).padding(.top,12).padding(.bottom,8)
+                        ForEach(group.entries) { entry in row(entry) }
+                        if group.unsavedCount>0 {
+                            Button { attention.showInbox?() } label:{
+                                VStack(alignment:.leading,spacing:5) {
+                                    Text("\(group.unsavedCount) earlier update\(group.unsavedCount==1 ? "":"s")").fontWeight(.semibold)
+                                    Text("Text wasn’t saved. New updates will show details here.").font(.system(size:11)).foregroundStyle(ink.opacity(0.65)).fixedSize(horizontal:false,vertical:true)
+                                }.frame(maxWidth:.infinity,alignment:.leading).padding(13)
+                            }.buttonStyle(.plain).background(Color(hex:"FFF8ED"),in:RoundedRectangle(cornerRadius:18))
+                                .vineTarget(scrolled:true).padding(.leading,52).padding(.trailing,12).padding(.bottom,8)
+                        }
+                        if group.moreCount>0 {
+                            Button("\(group.moreCount) more in tray") { attention.showInbox?() }
+                                .buttonStyle(.plain).font(.system(size:11,weight:.medium)).foregroundStyle(accent(group.source))
+                                .padding(.horizontal,13).padding(.vertical,8).background(Color(hex:"FFF8ED"),in:Capsule())
+                                .vineTarget(scrolled:true).padding(.leading,52).padding(.bottom,10)
                         }
                     }
                 }.frame(maxWidth:.infinity,alignment:.leading).padding(.bottom,15)
@@ -99,7 +111,8 @@ struct VineView:View {
     private func accent(_ source:SourceApp)->Color { Color(hex:source == .claude ? "BC673D":"397EA3") }
     private func row(_ entry:InboxEntry)->some View {
         let color=accent(entry.source)
-        let title=model.hideText || entry.title.isEmpty ? "Notification from \(entry.source.rawValue)" : entry.title
+        let title=model.hideText ? "Notification from \(entry.source.rawValue)" : (entry.title.isEmpty ? String(entry.body.prefix(80)) : entry.title)
+        let detail=model.hideText || entry.title.isEmpty ? "" : entry.body
         return HStack(spacing:0) {
             ZStack {
                 Path { p in p.move(to:CGPoint(x:22,y:42));p.addQuadCurve(to:CGPoint(x:52,y:23),control:CGPoint(x:42,y:45)) }.stroke(Color(hex:"748354"),lineWidth:2)
@@ -110,7 +123,8 @@ struct VineView:View {
                 Button { attention.open(entry) } label:{
                     VStack(alignment:.leading,spacing:4) {
                         Text(title).font(.system(size:13,weight:.semibold,design:.rounded)).lineLimit(2).multilineTextAlignment(.leading)
-                        Text(entry.date,style:.relative).font(.system(size:10)).foregroundStyle(ink.opacity(0.55))
+                        if !detail.isEmpty { Text(detail).font(.system(size:11)).foregroundStyle(ink.opacity(0.75)).lineLimit(2).multilineTextAlignment(.leading) }
+                        Text(entry.date.formatted(date:.omitted,time:.shortened)).font(.system(size:10)).foregroundStyle(ink.opacity(0.55))
                     }.frame(maxWidth:.infinity,minHeight:46,alignment:.leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).help("Open \(entry.source.rawValue)")
                 Button { attention.markRead(entry.id) } label:{Image(systemName:"checkmark.circle").font(.system(size:18,weight:.light)).foregroundStyle(color).frame(width:32,height:44)}
