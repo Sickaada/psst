@@ -9,8 +9,10 @@ public enum VineSummary {
     }
     public static func timeline(_ entries:[InboxEntry])->[InboxEntry] {
         var counts:[SourceApp:Int]=[:]
+        var seenChats=Set<UUID>()
         let visible=previewable(entries).filter { entry in
             guard counts[entry.source,default:0] < 2 else { return false }
+            if let id=entry.chatID, !seenChats.insert(id).inserted { return false }
             counts[entry.source,default:0] += 1
             return true
         }

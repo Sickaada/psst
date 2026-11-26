@@ -52,7 +52,7 @@ struct AttentionView:View {
                                     }
                                     if !model.hideText && !entry.body.isEmpty { Text(entry.body).font(.system(size:13)).foregroundStyle(.secondary).lineLimit(3) }
                                     HStack {
-                                        Button("Open \(source.rawValue)") { attention.open(entry) }
+                                        Button(entry.chatURL == nil ? "Open \(source.rawValue)" : "Open chat") { attention.open(entry) }
                                         if !entry.read { Button("Mark read") { attention.markRead(entry.id) } }
                                         Spacer()
                                         Button { attention.remove(entry.id) } label:{Image(systemName:"trash")}.accessibilityLabel("Remove saved notification")
@@ -63,7 +63,7 @@ struct AttentionView:View {
                     }
                 }
             }
-            Text("Saved items open the app. The original notification’s chat action may have expired.").font(.caption).foregroundStyle(.secondary)
+            Text("Open chat returns to a linked conversation. Open app launches the source application.").font(.caption).foregroundStyle(.secondary)
         }
     }
     private var preferences:some View {

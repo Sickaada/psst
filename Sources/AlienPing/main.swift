@@ -90,6 +90,9 @@ final class Delegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
     func applicationWillTerminate(_ notification: Notification) { vine?.stop();model.monitor.stop();model.attention.stop() }
 }
+if CommandLine.arguments.contains("--codex-stop") {
+    do { try CodexHook.run();exit(0) } catch { exit(1) }
+}
 let app = NSApplication.shared
 if let index=CommandLine.arguments.firstIndex(of:"--render-vine-motion"),CommandLine.arguments.count>index+1 {
     do { try MainActor.assumeIsolated { try VineMotionPreview.render(to:URL(fileURLWithPath:CommandLine.arguments[index+1])) };exit(0) }

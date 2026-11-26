@@ -29,6 +29,18 @@ enum VineVerification {
         try require(controller.layoutEvidence.frame.width==372,"Empty compact button must expand the vine, not open the tray")
         controller.state.toggle(hasItems:false,quiet:false)
         controller.state.expanded=true
+        // Exercise the actual hook writer and import path without notifying the desktop.
+        let thread=UUID(),turn=UUID()
+        let hookData=try JSONEncoder().encode(["session_id":thread.uuidString,"turn_id":turn.uuidString,"hook_event_name":"Stop","last_assistant_message":"Fixture reply"])
+        let spool=dir.appendingPathComponent("codex-events")
+        try CodexHook.record(hookData,in:spool,keepText:true)
+        model.attention.importCodexEvents()
+        try require(model.attention.inbox.entries.first?.chatID==thread,"Hook must enter the tray with real route identity")
+        try CodexHook.record(hookData,in:spool,keepText:true)
+        model.attention.importCodexEvents()
+        try require(model.attention.inbox.entries.count==1,"Retried hook must not duplicate the turn")
+        try require(try FileManager.default.contentsOfDirectory(atPath:spool.path).isEmpty,"Imported hook should leave the spool")
+        model.attention.clear()
         let first=InboxEntry(source:.claude,title:"Fixture",body:"")
         model.attention.inbox.insert(first)
         settle()

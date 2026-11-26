@@ -76,7 +76,7 @@ A ZIP version is also available if you prefer to unzip and move `Psst.app` into 
 
 Psst reads visible Notification Center banners through Accessibility. It does not record your screen, read your chat history, request notification APIs from Claude/Codex, or send data to a server. By default notification text stays in memory; only app, time and read state persist in the SQLite database at `~/Library/Application Support/Psst/notifications.sqlite`. You can opt into saving message text locally; saved previews then survive restarts. Existing JSON history migrates automatically. Turning that option off removes saved text from disk. Diagnostics never include message text. Preferences stay on your Mac. Focus matching reads only the foreground supported app’s focused-window and selected-tab labels; these labels are neither logged nor persisted.
 
-Meeting detection inspects Accessibility labels in supported browsers and Zoom for active leave/end-call controls. It does not use screen recording, microphone recording or a calendar account. It is a heuristic: hidden tabs, non-English controls and app updates may prevent detection. Manual Quiet mode remains available. A detected call stays quiet for 60 seconds after its controls disappear. This release has not yet been verified in a real Meet/Zoom call. Saved tray items open the source app; they cannot reliably recover an expired chat-specific notification action.
+Meeting detection inspects Accessibility labels in supported browsers and Zoom for active leave/end-call controls. It does not use screen recording, microphone recording or a calendar account. It is a heuristic: hidden tabs, non-English controls and app updates may prevent detection. Manual Quiet mode remains available. A detected call stays quiet for 60 seconds after its controls disappear. This release has not yet been verified in a real Meet/Zoom call. Banner-only tray items open the source app. Linked local Codex updates offer **Open chat**.
 
 Diagnostics contain event names, counters, source-app names, timing and runtime status in `~/Library/Logs/Psst/`. Notification Center’s Accessibility structure is not a stable public integration contract, so macOS updates can affect capture. Standard macOS banners must stay enabled. Reply buttons and other original notification actions are not reproduced.
 
@@ -109,3 +109,13 @@ For a distributable release, run `python3 scripts/package_release.py /path/to/Ps
 ## License
 
 MIT for code and original procedural companion artwork. The bundled legacy arrival-effect atlas is CC0; see [asset attribution](Resources/Mascots/LICENSES.txt).
+
+### Pick up a local Codex conversation
+
+Register the optional local Stop hook from this checkout:
+
+    python3 scripts/install_codex_hook.py /Applications/Psst.app
+
+Review the new **Save local update in Psst** command in Codex Settings → Hooks. Existing hooks are preserved. Psst uses the supplied session and turn IDs to associate replies with the correct conversation across restarts. Enable **Save message text on this Mac** for persisted vine previews. Click the newest card to reopen its chat or expand **earlier updates** to read previous replies. Each hook event is saved locally; no transcript file is opened.
+
+This integration covers locally executed Codex hooks. Native banners remain available independently and can appear alongside a linked update. An alert without a session ID opens its app. For shared Macs or a moved installation, check the executable path in Codex hook settings before enabling the command.

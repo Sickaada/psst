@@ -23,6 +23,7 @@ final class AttentionController: ObservableObject {
     private var observers:[NSObjectProtocol]=[]
     let meetings=MeetingMonitor()
     private let focusedChat=FocusedChatMonitor()
+    private let hookDirectory:URL
     private var store:NotificationStore?
     init(model:Model,directory:URL?=nil) {
         self.model=model
@@ -33,6 +34,7 @@ final class AttentionController: ObservableObject {
         storeContent=d.bool(forKey:"storeInboxContent")
         preferences=(d.data(forKey:"companions").flatMap { try? JSONDecoder().decode([String:CompanionPreferences].self,from:$0) }) ?? [:]
         let folder=directory ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Psst")
+        hookDirectory=folder.appendingPathComponent("codex-events")
         do {
             let loaded=try NotificationStore(directory:folder,storeContent:storeContent)
             inbox=try loaded.load()
@@ -91,13 +93,41 @@ final class AttentionController: ObservableObject {
     func markAllRead() { model.overlay.removeReadNotifications(Set(inbox.entries.map(\.id)));inbox.markAllRead();queue.clear();live.removeAll();save() }
     func remove(_ id:UUID) { model.overlay.removeReadNotifications([id]);inbox.remove(id);queue.remove(id);live.removeValue(forKey:id);save() }
     func clear() { model.overlay.removeReadNotifications(Set(inbox.entries.map(\.id)));inbox.clear();queue.clear();live.removeAll();save() }
-    func open(_ entry:InboxEntry) { model.openSource(entry.source) }
+    func open(_ entry:InboxEntry) {
+        guard let url=entry.chatURL else { model.openSource(entry.source);return }
+        guard let app=NSWorkspace.shared.urlForApplication(withBundleIdentifier:"com.openai.codex") else { model.openSource(.codex);return }
+        NSWorkspace.shared.open([url],withApplicationAt:app,configuration:NSWorkspace.OpenConfiguration()) { [weak self] _, error in
+            if error != nil { DispatchQueue.main.async { self?.model.openSource(.codex) } }
+        }
+    }
+    func importCodexEvents() {
+        guard model.enabled, let store,
+              let files=try? FileManager.default.contentsOfDirectory(at:hookDirectory,includingPropertiesForKeys:nil,options:.skipsHiddenFiles)
+        else { return }
+        var changed=false
+        for file in files.filter({ $0.pathExtension == "json" }).prefix(32) {
+            guard let data=try? Data(contentsOf:file), data.count <= 30000,
+                  let entry=try? JSONDecoder().decode(InboxEntry.self,from:data),
+                  entry.source == .codex, entry.chatID != nil, entry.id.uuidString.lowercased()==file.deletingPathExtension().lastPathComponent
+            else { continue }
+            if inbox.entries.contains(where:{ $0.id==entry.id }) {
+                try? FileManager.default.removeItem(at:file); continue
+            }
+            var next=inbox;next.insert(entry)
+            do {
+                try store.save(next,storeContent:storeContent)
+                inbox=next;changed=true;try FileManager.default.removeItem(at:file)
+            } catch { storageError="Couldn’t save a Codex update.";break }
+        }
+        if changed { onCountChanged?(inbox.unreadCount) }
+    }
     private func save() {
         onCountChanged?(inbox.unreadCount)
         do { guard let store else { return };try store.save(inbox,storeContent:storeContent);storageError="" }
         catch { storageError="Couldn’t save the tray. Check available disk space." }
     }
     private func tick() {
+        importCodexEvents()
         let idle=CGEventSource.secondsSinceLastEventType(.combinedSessionState,eventType:CGEventType(rawValue:UInt32.max)!)
         let reason:String
         if quietMode == "Quiet" { reason="Quiet mode" }

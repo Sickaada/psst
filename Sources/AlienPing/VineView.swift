@@ -62,7 +62,13 @@ struct VineView:View {
     private var chrome:Color { Color(hex:scheme == .dark ? "253029":"FAFCF7") }
     private var leafInk:Color { Color(hex:scheme == .dark ? "BDD1AB":"536B43") }
     private var unread:[InboxEntry] { VineSummary.previewable(attention.inbox.entries) }
+    @State private var expandedChats=Set<UUID>()
     private var timeline:[InboxEntry] { VineSummary.timeline(attention.inbox.entries) }
+    private var overflowCount:Int {
+        let represented=Set(timeline.compactMap(\.chatID))
+        let visible=Set(timeline.map(\.id))
+        return unread.filter { !visible.contains($0.id) && !($0.chatID.map(represented.contains) ?? false) }.count
+    }
     private var shownCount:Int { timeline.count }
     private var isExpanded:Bool { state.visible(hasItems:!unread.isEmpty,quiet:attention.isQuiet) }
     var body:some View {
@@ -100,8 +106,8 @@ struct VineView:View {
                                 Text(attention.inbox.unreadCount == 0 ? "New unread notifications will appear here." : "Unread alerts without saved text are in your tray.").font(.system(size:15)).foregroundStyle(ink.opacity(0.7))
                             }.padding(18).background(chrome,in:RoundedRectangle(cornerRadius:14)).padding(.leading,56).padding(.trailing,12)
                         }
-                        if unread.count > shownCount {
-                            Button("\(unread.count - shownCount) older in tray") { attention.showInbox?() }
+                        if overflowCount > 0 {
+                            Button("\(overflowCount) older in tray") { attention.showInbox?() }
                                 .buttonStyle(.link).vineTarget(scrolled:true).padding(.leading,66)
                         }
                         ForEach(timeline) { entry in
@@ -130,6 +136,7 @@ struct VineView:View {
                 VineLeaf().fill(color.opacity(0.75)).frame(width:12,height:20).offset(x:8,y:-1)
             }.frame(width:52,height:68).allowsHitTesting(false).accessibilityHidden(true)
             HStack(spacing:2) {
+                VStack(alignment:.leading,spacing:6) {
                 Button { attention.open(entry) } label:{
                     VStack(alignment:.leading,spacing:5) {
                         Text(title).font(latest ? NotificationAppearance.title : .system(size:19,weight:.medium)).tracking(-0.2).foregroundStyle(appearance.ink).lineLimit(2).multilineTextAlignment(.leading)
@@ -140,7 +147,27 @@ struct VineView:View {
                             Text(entry.source.rawValue).font(.system(size:12,weight:.semibold)).foregroundStyle(color)
                         }.font(.system(size:12))
                     }.frame(maxWidth:.infinity,minHeight:46,alignment:.leading).contentShape(Rectangle())
-                }.buttonStyle(.plain).help("Open \(entry.source.rawValue)")
+                }.buttonStyle(.plain).help(entry.chatURL == nil ? "Open \(entry.source.rawValue)" : "Open chat")
+                if let chat=entry.chatID {
+                    let previous=entry.earlierUpdates(in:attention.inbox.entries)
+                    if !previous.isEmpty {
+                        let expanded=expandedChats.contains(chat)
+                        Button {
+                            if expanded { expandedChats.remove(chat) } else { expandedChats.insert(chat) }
+                        } label:{
+                            Label("\(previous.count) earlier update\(previous.count == 1 ? "" : "s")",systemImage:expanded ? "chevron.down":"chevron.right")
+                        }.font(.caption).buttonStyle(.plain)
+                        if expanded {
+                            ForEach(previous) { old in
+                                VStack(alignment:.leading,spacing:2) {
+                                    Text(old.date,style:.time).font(.caption2)
+                                    Text(model.hideText ? "Message preview hidden" : (old.body.isEmpty ? "Earlier update" : old.body)).font(.caption).lineLimit(3)
+                                }
+                            }
+                        }
+                    }
+                }
+                }
                 Button { attention.markRead(entry.id) } label:{Image(systemName:"checkmark.circle").font(.system(size:16,weight:.regular)).foregroundStyle(color.opacity(0.8)).frame(width:30,height:44)}
                     .buttonStyle(.plain).help("Mark read").accessibilityLabel("Mark \(title) read")
             }.padding(.leading,27).padding(.trailing,8).padding(.vertical,14)

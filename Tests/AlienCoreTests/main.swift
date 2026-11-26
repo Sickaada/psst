@@ -273,3 +273,24 @@ do {
     XCTAssertEqual((attributes[.posixPermissions] as? NSNumber)?.intValue,0o600)
     print("SQLite migration, restart persistence, privacy scrubbing, read state, clear and file permissions passed")
 } catch { print("FAIL: SQLite storage: \(error)");exit(1) }
+
+do {
+    let chatA=UUID(),chatB=UUID(), created=Date()
+    func reply(_ chat:UUID,_ message:String,_ at:Double) throws -> InboxEntry {
+        let payload=["hook_event_name":"Stop","session_id":chat.uuidString,"turn_id":UUID().uuidString,"last_assistant_message":message]
+        return try JSONDecoder().decode(CodexUpdate.self,from:JSONEncoder().encode(payload)).entry(at:created.addingTimeInterval(at))!
+    }
+    let first=try reply(chatA,"Same subject\nEarlier A",0), other=try reply(chatB,"Same subject\nOther chat",1), latest=try reply(chatA,"Same subject\nLatest A",2)
+    let dir=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at:dir) }
+    var state=InboxState()
+    for entry in [first,other,latest,latest] { state.insert(entry) }
+    try NotificationStore(directory:dir,storeContent:true).save(state,storeContent:true)
+    let restored=try NotificationStore(directory:dir,storeContent:true).load()
+    let cards=VineSummary.timeline(restored.entries)
+    XCTAssertEqual(cards.map(\.id),[other.id,latest.id])
+    XCTAssertEqual(cards.map{$0.chatURL!.absoluteString},[chatB,chatA].map{"codex://threads/"+$0.uuidString.lowercased()})
+    XCTAssertEqual(cards.last!.earlierUpdates(in:restored.entries).map(\.body),["Earlier A"])
+    XCTAssertEqual(cards.first!.earlierUpdates(in:restored.entries).count,0)
+    print("Two distinct local chat routes and grouped context survive SQLite restart; replay deduplicated")
+} catch { print("FAIL: chat routing: \(error)");exit(1) }

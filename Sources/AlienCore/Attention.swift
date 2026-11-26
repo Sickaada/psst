@@ -2,6 +2,7 @@ import Foundation
 
 public struct InboxEntry: Codable, Identifiable, Equatable {
     public var id:UUID
+    public var chatID:UUID?
     public var source:SourceApp
     public var title:String
     public var body:String
