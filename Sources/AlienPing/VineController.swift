@@ -15,7 +15,11 @@ final class VineController {
     private var globalMouse:Any?
     private var localMouse:Any?
     private var lastLayout=""
-    init(model:Model,state:VineState=VineState()) { self.model=model;self.state=state }
+    private var wasQuiet=false
+    private var previousCount=0
+    private var closeDeadline:TimeInterval?
+    private let now:()->TimeInterval
+    init(model:Model,state:VineState=VineState(),now:@escaping ()->TimeInterval={ ProcessInfo.processInfo.systemUptime }) { self.model=model;self.state=state;self.now=now }
     func start(present:Bool=true) {
         presenting=present
         let p=NSPanel(contentRect:.zero,styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
@@ -34,7 +38,12 @@ final class VineController {
         timer=Timer.scheduledTimer(withTimeInterval:0.2,repeats:true) { [weak self] _ in self?.layout();self?.updateMouse() }
         layout()
     }
-    func toggle() { state.enabled.toggle() }
+    func open() {
+        state.enabled=true;state.expanded=true;state.manuallyExpanded=true
+        closeDeadline=now()+20
+    }
+    func hide() { state.enabled=false;state.manuallyExpanded=false;closeDeadline=nil }
+    func revealArrival() { if state.enabled && !model.attention.isQuiet { open() } }
     func stop() {
         timer?.invalidate();timer=nil;subscriptions.removeAll()
         if let globalMouse { NSEvent.removeMonitor(globalMouse) };globalMouse=nil
@@ -45,7 +54,17 @@ final class VineController {
         guard let panel,let screen=NSScreen.screens.first else { return }
         guard state.enabled else { panel.orderOut(nil);return }
         let count=VineSummary.previewable(model.attention.inbox.entries).count
-        let expanded=state.visible(hasItems:count>0,quiet:model.attention.isQuiet)
+        let quiet=model.attention.isQuiet
+        if (quiet && !wasQuiet) || (count==0 && previousCount>0) { state.manuallyExpanded=false }
+        wasQuiet=quiet;previousCount=count
+        var expanded=state.visible(hasItems:count>0,quiet:model.attention.isQuiet)
+        if expanded {
+            if closeDeadline == nil { closeDeadline=now()+20 }
+            if presenting && panel.isVisible && panel.frame.contains(NSEvent.mouseLocation) { closeDeadline=now()+20 }
+            if let deadline=closeDeadline, now()>=deadline {
+                state.manuallyExpanded=false;state.expanded=false;expanded=false
+            }
+        } else { closeDeadline=nil }
         let area=screen.visibleFrame
         let height=expanded ? area.height-24 : 116
         let width:CGFloat=expanded ? min(372,area.width) : 76

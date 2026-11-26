@@ -62,6 +62,8 @@ struct VineView:View {
     private var chrome:Color { Color(hex:scheme == .dark ? "253029":"FAFCF7") }
     private var leafInk:Color { Color(hex:scheme == .dark ? "BDD1AB":"536B43") }
     private var unread:[InboxEntry] { VineSummary.previewable(attention.inbox.entries) }
+    private var timeline:[InboxEntry] { VineSummary.timeline(attention.inbox.entries) }
+    private var shownCount:Int { timeline.count }
     private var isExpanded:Bool { state.visible(hasItems:!unread.isEmpty,quiet:attention.isQuiet) }
     var body:some View {
         Group {
@@ -80,39 +82,48 @@ struct VineView:View {
                 Button { attention.showInbox?() } label:{
                     HStack(spacing:8) {
                         Image(systemName:"leaf").font(.system(size:13,weight:.medium)).foregroundStyle(leafInk)
-                        Text("Notifications").font(.system(size:13,weight:.medium))
-                        Text("\(min(6,unread.count)) of \(unread.count)").font(.system(size:11)).foregroundStyle(ink.opacity(0.65))
+                        Text("Notifications").font(.system(size:16,weight:.medium))
+                        Text("\(shownCount) shown").font(.system(size:13)).foregroundStyle(ink.opacity(0.65))
                     }
                 }.buttonStyle(.plain).help("Open notification tray")
                 Spacer(minLength:2)
             }.padding(.leading,12).padding(.trailing,5).frame(height:40)
                 .background(chrome,in:RoundedRectangle(cornerRadius:12))
                 .shadow(color:.black.opacity(0.08),radius:8,y:2).vineTarget().padding(.leading,42).padding(.trailing,10).padding(.top,8).padding(.bottom,8)
-            GeometryReader { space in
+            GeometryReader { viewport in
+                ScrollViewReader { scroll in
                 ScrollView {
                     VStack(alignment:.leading,spacing:0) {
                         if unread.isEmpty {
                             VStack(alignment:.leading,spacing:8) {
-                                Text("No saved previews yet").font(.system(size:15,weight:.medium))
-                                Text("New notifications with message text will appear here. Older alerts without saved text stay in your tray.").font(.system(size:12)).foregroundStyle(ink.opacity(0.7))
+                                Text(attention.inbox.unreadCount == 0 ? "You’re caught up" : "No unread previews").font(.system(size:15,weight:.medium))
+                                Text(attention.inbox.unreadCount == 0 ? "New unread notifications will appear here." : "Unread alerts without saved text are in your tray.").font(.system(size:15)).foregroundStyle(ink.opacity(0.7))
                             }.padding(18).background(chrome,in:RoundedRectangle(cornerRadius:14)).padding(.leading,56).padding(.trailing,12)
                         }
-                        ForEach(VineSummary.recent(unread)) { entry in
-                            row(entry).frame(minHeight:max(112,(space.size.height-16)/CGFloat(max(1,min(6,unread.count)))))
+                        if unread.count > shownCount {
+                            Button("\(unread.count - shownCount) older in tray") { attention.showInbox?() }
+                                .buttonStyle(.link).vineTarget(scrolled:true).padding(.leading,66)
                         }
-                    }.frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,8)
-                }.scrollIndicators(.hidden)
+                        ForEach(timeline) { entry in
+                            row(entry, latest:entry.id == timeline.last?.id).id(entry.id)
+                        }
+                    }.padding(.vertical,8).frame(maxWidth:.infinity,minHeight:viewport.size.height,alignment:unread.isEmpty ? .topLeading : .bottomLeading)
+                }.scrollIndicators(.automatic)
+                    .onChange(of:timeline.last?.id,initial:true) { _, id in
+                        if let id { scroll.scrollTo(id,anchor:.bottom) }
+                    }
+                }
             }.background(alignment:.leading){ VineStem() }
-            Button { attention.showInbox?() } label:{Text("View all notifications").font(.system(size:11,weight:.medium)).padding(.horizontal,14).padding(.vertical,7)}
+            Button { attention.showInbox?() } label:{Text("View tray · \(attention.inbox.unreadCount) unread").font(.system(size:13,weight:.medium)).padding(.horizontal,14).padding(.vertical,7)}
                 .buttonStyle(.plain).background(chrome,in:Capsule()).vineTarget().padding(.vertical,8)
         }
     }
-    private func row(_ entry:InboxEntry)->some View {
+    private func row(_ entry:InboxEntry, latest:Bool)->some View {
         let appearance=NotificationAppearance(source:entry.source,scheme:scheme)
         let color=appearance.accent
-        let missing=entry.title.isEmpty && entry.body.isEmpty
-        let title=model.hideText || missing ? "Notification from \(entry.source.rawValue)" : (entry.title.isEmpty ? String(entry.body.prefix(100)) : entry.title)
-        let detail=model.hideText ? "Message preview hidden" : (missing ? "Message text wasn’t saved for this older notification." : (entry.title.isEmpty ? "" : entry.body))
+        let subject=entry.title.trimmingCharacters(in:.whitespacesAndNewlines)
+        let title=model.hideText || subject.isEmpty ? "Notification from \(entry.source.rawValue)" : subject
+        let detail=model.hideText ? "Message preview hidden" : entry.body.trimmingCharacters(in:.whitespacesAndNewlines)
         return HStack(spacing:0) {
             ZStack {
                 Path { p in p.move(to:CGPoint(x:24,y:40));p.addQuadCurve(to:CGPoint(x:52,y:30),control:CGPoint(x:36,y:40)) }.stroke(Color(hex:"829173"),lineWidth:1.2)
@@ -121,13 +132,13 @@ struct VineView:View {
             HStack(spacing:2) {
                 Button { attention.open(entry) } label:{
                     VStack(alignment:.leading,spacing:5) {
+                        Text(title).font(latest ? NotificationAppearance.title : .system(size:19,weight:.medium)).tracking(-0.2).foregroundStyle(appearance.ink).lineLimit(2).multilineTextAlignment(.leading)
+                        if !detail.isEmpty { Text(detail).font(NotificationAppearance.body).foregroundStyle(appearance.ink.opacity(0.88)).lineLimit(latest ? 4 : 2).multilineTextAlignment(.leading) }
                         HStack {
-                            Text(entry.source.rawValue).fontWeight(.semibold).foregroundStyle(color)
+                            Text(entry.date.formatted(date:Calendar.current.isDateInToday(entry.date) ? .omitted : .abbreviated,time:.shortened)).monospacedDigit().foregroundStyle(appearance.secondary)
                             Spacer()
-                            Text(entry.date.formatted(date:.omitted,time:.shortened)).foregroundStyle(appearance.secondary)
-                        }.font(.system(size:11))
-                        Text(title).font(NotificationAppearance.title).tracking(-0.2).foregroundStyle(appearance.ink).lineLimit(2).multilineTextAlignment(.leading)
-                        if !detail.isEmpty { Text(detail).font(NotificationAppearance.body).foregroundStyle(appearance.secondary).lineLimit(3).multilineTextAlignment(.leading) }
+                            Text(entry.source.rawValue).font(.system(size:12,weight:.semibold)).foregroundStyle(color)
+                        }.font(.system(size:12))
                     }.frame(maxWidth:.infinity,minHeight:46,alignment:.leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).help("Open \(entry.source.rawValue)")
                 Button { attention.markRead(entry.id) } label:{Image(systemName:"checkmark.circle").font(.system(size:16,weight:.regular)).foregroundStyle(color.opacity(0.8)).frame(width:30,height:44)}
@@ -147,7 +158,7 @@ struct VineView:View {
         } label:{
             VStack(spacing:5) {
                 Image(systemName:attention.isQuiet ? "moon":"chevron.\(isExpanded ? "left":"right")").font(.system(size:18,weight:.semibold))
-                if !isExpanded && !unread.isEmpty { Text("\(unread.count)").font(.system(size:11,weight:.semibold)) }
+                if !isExpanded && !unread.isEmpty { Text("\(shownCount)").font(.system(size:13,weight:.semibold)) }
                 if unread.isEmpty { Image(systemName:"leaf").font(.system(size:12)) }
             }.foregroundStyle(leafInk).frame(width:52,height:64)
                 .background(chrome,in:RoundedRectangle(cornerRadius:18))

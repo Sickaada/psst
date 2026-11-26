@@ -21,10 +21,10 @@ final class OverlayController {
         while !queue.isEmpty && cards.count < capacity {
             let occupied=Set(cards.values.map(\.slot));guard let slot=(0..<capacity).first(where:{!occupied.contains($0)}) else { return }
             let ping=queue.removeFirst(),id=UUID()
-            let width=min(CGFloat(420),bounds.width),height:CGFloat=166
+            let width=min(CGFloat(452),bounds.width),height:CGFloat=198
             let x=model.corner == .topLeft || model.corner == .bottomLeft ? bounds.minX : bounds.maxX-width
             let bottom=model.corner == .bottomLeft || model.corner == .bottomRight
-            let y=bottom ? bounds.minY+CGFloat(slot)*178 : bounds.maxY-height-CGFloat(slot)*178
+            let y=bottom ? bounds.minY+CGFloat(slot)*height : bounds.maxY-height-CGFloat(slot)*height
             let frame=CGRect(x:x,y:y,width:width,height:height)
             let anchor=CGPoint(x:frame.minX+32,y:frame.minY+38)
             let panel=NSPanel(contentRect:frame,styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)

@@ -55,13 +55,21 @@ final class AttentionController: ObservableObject {
     func stop() { timer?.invalidate();timer=nil;meetings.stop();focusedChat.stop();for token in observers { NSWorkspace.shared.notificationCenter.removeObserver(token) };observers=[];save() }
     func preference(_ source:SourceApp)->CompanionPreferences { preferences[source.rawValue] ?? CompanionPreferences(character:source == .claude ? "sunburst":"terminal") }
     func change(_ source:SourceApp,_ update:(inout CompanionPreferences)->Void) { var p=preference(source);update(&p);preferences[source.rawValue]=p }
+    var vineOnly:Bool { UserDefaults.standard.double(forKey:"vineOnlyUntil") > Date().timeIntervalSince1970 }
+    var onVineArrival:(()->Void)?
+    func pauseBubbles() {
+        UserDefaults.standard.set(Date().addingTimeInterval(1800).timeIntervalSince1970,forKey:"vineOnlyUntil")
+        queue.clear();live.removeAll();model.overlay.stop()
+    }
     func receive(_ ping:Ping) {
         focusedChat.inspect { [weak self] context in
             guard let self else { return }
             let seen = !self.sessionUnavailable && context?.matches(source:ping.source,title:ping.title,body:ping.body)==true
             let entry=InboxEntry(source:ping.source,title:ping.title,body:ping.body,read:seen)
             self.inbox.insert(entry)
-            if !seen {
+            if !seen && self.vineOnly {
+                if !self.isQuiet && !VineSummary.previewable([entry]).isEmpty { self.onVineArrival?() }
+            } else if !seen {
                 var livePing=ping;livePing.inboxIDs=[entry.id]
                 self.live[entry.id]=livePing
                 self.queue.enqueue(entry.id,at:Date.timeIntervalSinceReferenceDate,quiet:self.isQuiet)
@@ -83,7 +91,7 @@ final class AttentionController: ObservableObject {
     func markAllRead() { model.overlay.removeReadNotifications(Set(inbox.entries.map(\.id)));inbox.markAllRead();queue.clear();live.removeAll();save() }
     func remove(_ id:UUID) { model.overlay.removeReadNotifications([id]);inbox.remove(id);queue.remove(id);live.removeValue(forKey:id);save() }
     func clear() { model.overlay.removeReadNotifications(Set(inbox.entries.map(\.id)));inbox.clear();queue.clear();live.removeAll();save() }
-    func open(_ entry:InboxEntry) { markRead(entry.id);model.openSource(entry.source) }
+    func open(_ entry:InboxEntry) { model.openSource(entry.source) }
     private func save() {
         onCountChanged?(inbox.unreadCount)
         do { guard let store else { return };try store.save(inbox,storeContent:storeContent);storageError="" }
@@ -104,7 +112,7 @@ final class AttentionController: ObservableObject {
             quietReason=reason
             if !reason.isEmpty {
                 model.overlay.stop()
-                for entry in inbox.entries where !entry.read && Date().timeIntervalSince(entry.date)<15 { queue.enqueue(entry.id,at:Date.timeIntervalSinceReferenceDate,quiet:true) }
+                for entry in inbox.entries where !vineOnly && live[entry.id] != nil && !entry.read && Date().timeIntervalSince(entry.date)<15 { queue.enqueue(entry.id,at:Date.timeIntervalSinceReferenceDate,quiet:true) }
             }
             Diagnostics.shared.event("quiet_mode_changed",["quiet":!reason.isEmpty])
         }

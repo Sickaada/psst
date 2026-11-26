@@ -39,27 +39,29 @@ struct PingView: View {
     var body: some View {
         ZStack(alignment:.topTrailing) {
             Button(action:open) {
-                VStack(alignment:.leading,spacing:5) {
-                    HStack(spacing:8) {
-                        Text(ping.source.rawValue).font(.system(size:11,weight:.semibold)).foregroundStyle(accent)
-                        Spacer()
-                        Text(ping.preview ? "Preview" : "now").font(.system(size:11)).foregroundStyle(secondary)
-                    }.padding(.trailing,25)
-                    Text(hideText ? "New notification" : ping.title)
-                        .font(NotificationAppearance.title).tracking(-0.2).lineLimit(1)
-                        .frame(maxWidth:.infinity,alignment:.leading)
-                    Text(hideText ? "Your message is ready to read." : ping.body)
-                        .font(.system(size:13)).foregroundStyle(secondary).lineLimit(2)
-                        .frame(maxWidth:.infinity,alignment:.leading)
-                    Spacer(minLength:3)
+                VStack(alignment:.leading,spacing:6) {
                     HStack(spacing:6) {
+                        Circle().fill(accent).frame(width:6,height:6)
+                        Text(ping.source.rawValue).font(.system(size:12,weight:.semibold))
                         Spacer()
-                        Text(ping.actionLabel ?? (ping.openNotification == nil ? "Open \(ping.source.rawValue)" : "Open chat"))
-                        Image(systemName:"arrow.up.right").font(.system(size:10,weight:.medium))
-                    }.font(.system(size:12,weight:.medium)).foregroundStyle(accent)
+                        Text(ping.actionLabel ?? (ping.openNotification == nil ? "Open app" : "Open chat"))
+                        Image(systemName:"arrow.up.right").font(.system(size:9,weight:.medium))
+                    }
+                    .font(.system(size:11,weight:.medium)).foregroundStyle(accent)
+                    .padding(.trailing,21)
+                    if hideText || !ping.title.isEmpty {
+                        Text(hideText ? "New notification" : ping.title)
+                            .font(.system(size:16,weight:.semibold)).lineLimit(2)
+                    }
+                    if hideText || !ping.body.isEmpty {
+                        Text(hideText ? "Your message is ready to read." : ping.body)
+                            .font(.system(size:15)).foregroundStyle(ink.opacity(0.88))
+                            .lineSpacing(1).lineLimit(4)
+                    }
                 }
-                .padding(.leading,29).padding(.trailing,18).padding(.vertical,14)
-                .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.leading)
+                .multilineTextAlignment(.leading)
+                .padding(.leading,25).padding(.trailing,15).padding(.vertical,12)
+                .frame(maxWidth:.infinity,alignment:.leading)
                 .contentShape(NotificationBubble())
             }.buttonStyle(.plain).foregroundStyle(ink)
                 .accessibilityLabel("Open \(ping.source.rawValue): \(hideText ? "New notification" : ping.title)")
@@ -73,6 +75,7 @@ struct PingView: View {
         .overlay(NotificationBubble().stroke(edge.opacity(hovered ? 1 : 0.8),lineWidth:1).allowsHitTesting(false))
         .shadow(color:appearance.shadow,radius:4,x:0,y:2)
         .padding(.leading,60).padding(.trailing,6).padding(.vertical,6)
+        .frame(maxHeight:.infinity,alignment:.bottom)
         .onHover { hovered=$0 }
     }
 }

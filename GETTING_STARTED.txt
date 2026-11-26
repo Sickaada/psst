@@ -51,6 +51,8 @@ The sparkle menu opens your notification tray. Quiet & personal controls meeting
 
 The left-edge vine shows unread items. Click a leaf title to open its app, or its check to mark read. Use the large center button to collapse and the sparkle menu to hide/show the vine. Quiet mode or no unread items shows a compact leaf badge.
 
-The full-height vine shows the latest six individual unread notifications across both apps. Older items without saved text do not appear on the vine. Enable Save message text on this Mac in Quiet & personal if you want future details to survive restarting Psst.
+Choose “Vine only for 30 minutes” in the sparkle menu to pause popup bubbles. The expanded vine collapses after 20 seconds with the pointer away.
+
+The full-height vine shows up to two unread previews per app, with the newest at the bottom and earlier context above. Older items without saved text do not appear on the vine. Enable Save message text on this Mac in Quiet & personal if you want future details to survive restarting Psst.
 
 Psst skips alerts when their title matches the chat currently in front in Claude/Codex. Opening that chat later clears matching unread leaves. Generic titles or unavailable chat context keep alerts unread. Background apps/tabs do not count as seen.

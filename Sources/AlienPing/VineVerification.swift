@@ -10,7 +10,8 @@ enum VineVerification {
         let defaults=UserDefaults(suiteName:suite)!
         defer { defaults.removePersistentDomain(forName:suite);try? FileManager.default.removeItem(at:dir) }
         model.attention=AttentionController(model:model,directory:dir)
-        let state=VineState(defaults:defaults),controller=VineController(model:model,state:VineState(defaults:defaults))
+        var clock=0.0
+        let state=VineState(defaults:defaults),controller=VineController(model:model,state:VineState(defaults:defaults),now:{clock})
         controller.start(present:false)
         defer { controller.stop() }
         func settle() {
@@ -43,9 +44,15 @@ enum VineVerification {
         try require(controller.layoutEvidence.frame.height <= (NSScreen.screens.first?.visibleFrame.height ?? 0)-24,"Large tray must fit the display")
         let h=controller.layoutEvidence.frame.height
         try require(controller.layoutEvidence.targets.allSatisfy{$0.minY>=0 && $0.maxY<=h},"Offscreen rows must not expose hit targets outside panel")
+        controller.hide();controller.open();settle()
+        try require(controller.state.enabled && controller.layoutEvidence.frame.width==372,"Open must reveal a hidden vine")
         model.attention.quietReason="Test quiet";settle()
         try require(controller.layoutEvidence.frame.width==76,"Quiet mode must collapse the vine")
-        model.attention.quietReason="";controller.state.expanded=false;settle()
+        controller.open();settle()
+        try require(controller.layoutEvidence.frame.width==372,"Explicit open during quiet must work")
+        clock += 21;settle()
+        try require(controller.layoutEvidence.frame.width==76,"Inactive vine must collapse")
+        model.attention.quietReason="";settle()
         try require(controller.layoutEvidence.frame.width==76,"Manual collapse must persist after quiet ends")
         state.expanded=false
         try require(!VineState(defaults:defaults).expanded,"Collapse setting must survive restart")

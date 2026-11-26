@@ -19,7 +19,10 @@ final class Delegate: NSObject, NSApplicationDelegate {
         let menu=NSMenu()
         let trayItem=NSMenuItem(title:"Notification tray",action:#selector(showInbox),keyEquivalent:"i");trayItem.target=self;unreadItem=trayItem;menu.addItem(trayItem)
         let quietItem=NSMenuItem(title:"Toggle quiet mode",action:#selector(toggleQuiet),keyEquivalent:"d");quietItem.target=self;menu.addItem(quietItem)
-        let vineItem=NSMenuItem(title:"Show notification vine",action:#selector(toggleVine),keyEquivalent:"v");vineItem.target=self;vineMenuItem=vineItem;menu.addItem(vineItem)
+        let vineItem=NSMenuItem(title:"Open notification vine",action:#selector(openVine),keyEquivalent:"v");vineItem.target=self;vineMenuItem=vineItem;menu.addItem(vineItem)
+        for (title,action) in [("Hide notification vine",#selector(hideVine)),("Vine only for 30 minutes",#selector(pauseBubbles))] {
+            let item=NSMenuItem(title:title,action:action,keyEquivalent:"");item.target=self;menu.addItem(item)
+        }
         menu.addItem(.separator())
         let stageItem=NSMenuItem(title:"Mascot Stage",action:#selector(showMascotStage),keyEquivalent:"m");stageItem.target=self
         menu.addItem(stageItem)
@@ -42,7 +45,7 @@ final class Delegate: NSObject, NSApplicationDelegate {
         }
         model.attention.start()
         vine=VineController(model:model);vine?.start()
-        vineMenuItem?.state = vine?.state.enabled == true ? .on : .off
+        model.attention.onVineArrival = { [weak self] in self?.vine?.revealArrival() }
         model.monitor.start()
         if CommandLine.arguments.contains("-mascotPreview") { showMascotStage() }
         else if !CommandLine.arguments.contains("--login-item") && !CommandLine.arguments.contains("--background") { showSettings() }
@@ -56,7 +59,9 @@ final class Delegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now()+1) { self.model.preview() }
         }
     }
-    @objc func toggleVine() { vine?.toggle();vineMenuItem?.state = vine?.state.enabled == true ? .on : .off }
+    @objc func openVine() { vine?.open() }
+    @objc func hideVine() { vine?.hide() }
+    @objc func pauseBubbles() { model.attention.pauseBubbles() }
     @objc func toggleQuiet() { model.attention.quietMode = model.attention.quietMode == "Quiet" ? "Automatic" : "Quiet" }
     @objc func showInbox() {
         if inboxWindow == nil {

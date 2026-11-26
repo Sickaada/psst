@@ -47,8 +47,8 @@ enum ReadmePreview {
         try save(AttentionView(attention:attention,model:model).frame(width:640,height:680),"tray.png")
         try save(AttentionView(attention:attention,model:model,tab:1).frame(width:680,height:1050),"personalize.png")
         try save(VStack(spacing:30) {
-            PingView(ping:Ping(source:.claude,title:"Your research is ready",body:"A little update, delivered with personality."),color:Color(hex:"EDA47F"),hideText:false,open:{},dismiss:{})
-            PingView(ping:Ping(source:.codex,title:"Build complete",body:"Your changes are ready to review."),color:Color(hex:"81C9ED"),hideText:false,open:{},dismiss:{})
+            PingView(ping:Ping(source:.claude,title:"Your research is ready",body:"The comparison covers price, setup time, and privacy. Both local options work offline once the initial download finishes."),color:Color(hex:"EDA47F"),hideText:false,open:{},dismiss:{}).frame(width:452,height:198)
+            PingView(ping:Ping(source:.codex,title:"Build complete",body:"The build passed on Intel and Apple Silicon. The updated banner fits four lines of message text and keeps the conversation action within reach."),color:Color(hex:"81C9ED"),hideText:false,open:{},dismiss:{}).frame(width:452,height:198)
         }.padding(40).background(Color(hex:"EAEFF5")),"bubbles.png")
     }
 }
