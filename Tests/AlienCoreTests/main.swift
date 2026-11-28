@@ -294,3 +294,21 @@ do {
     XCTAssertEqual(cards.first!.earlierUpdates(in:restored.entries).count,0)
     print("Two distinct local chat routes and grouped context survive SQLite restart; replay deduplicated")
 } catch { print("FAIL: chat routing: \(error)");exit(1) }
+
+do {
+    let a = UUID(), b = UUID()
+    var index = ChatRouteIndex()
+    index.add(a, title: "Design chat", source: .codex)
+    index.add(b, title: "Design chat", source: .claude)
+    var state = InboxState()
+    state.insert(InboxEntry(source: .claude, title: "Design chat", body: ""))
+    state.insert(InboxEntry(source: .codex, title: " design  chat ", body: ""))
+    XCTAssertEqual(state.restoreChatRoutes(from: index), 2)
+    XCTAssertEqual(state.entries.compactMap { $0.chatURL?.absoluteString }, [
+        "codex://threads/" + a.uuidString.lowercased(),
+        "claude://code/continue?session=local_" + b.uuidString.lowercased()
+    ])
+    index.add(b, title: "Design chat", source: .codex)
+    XCTAssertEqual(index.destination(for: state.entries[0]), nil)
+    XCTAssertEqual(state.restoreChatRoutes(from: index), 0)
+}

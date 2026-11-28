@@ -1,6 +1,6 @@
 import Foundation
 
-/// Only local Stop events have a route here. Banner-only entries remain unlinked.
+/// Stop events carry their conversation ID directly.
 public struct CodexUpdate: Decodable {
     public let session_id: UUID
     public let turn_id: UUID
@@ -22,8 +22,12 @@ public struct CodexUpdate: Decodable {
 
 public extension InboxEntry {
     var chatURL:URL? {
-        guard source == .codex, let chatID else { return nil }
-        return URL(string:"codex://threads/"+chatID.uuidString.lowercased())
+        guard let id = chatID?.uuidString.lowercased() else { return nil }
+        switch source {
+        case .codex: return URL(string: "codex://threads/" + id)
+        case .claude: return URL(string: "claude://code/continue?session=local_" + id)
+        default: return nil
+        }
     }
     func earlierUpdates(in entries:[InboxEntry])->[InboxEntry] {
         guard let chatID else { return [] }

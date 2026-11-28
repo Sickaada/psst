@@ -20,6 +20,16 @@ public struct InboxState: Codable {
         guard !entries.contains(where:{$0.id == entry.id}) else { return }
         entries.insert(entry,at:0);prune(now:now)
     }
+    public mutating func restoreChatRoutes(from index: ChatRouteIndex) -> Int {
+        var count = 0
+        for i in entries.indices where entries[i].chatID == nil {
+            if let id = index.destination(for: entries[i]) {
+                entries[i].chatID = id
+                count += 1
+            }
+        }
+        return count
+    }
     public mutating func prune(now:Date=Date()) { entries=Array(entries.filter{now.timeIntervalSince($0.date)<7*86400}.prefix(200)) }
     public mutating func markRead(_ id:UUID) { if let i=entries.firstIndex(where:{$0.id==id}) { entries[i].read=true } }
     public mutating func markAllRead() { for i in entries.indices { entries[i].read=true } }

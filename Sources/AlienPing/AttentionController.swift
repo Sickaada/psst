@@ -18,6 +18,27 @@ final class AttentionController: ObservableObject {
     var onCountChanged:((Int)->Void)?
     private var queue=AttentionQueue()
     private var live:[UUID:Ping]=[:]
+    private var originalActions: [UUID: () -> Void] = [:]
+    private var routeIndex = ChatRouteIndex()
+    private var pendingRouteRefresh: DispatchWorkItem?
+    private func refreshRoutes() {
+        guard pendingRouteRefresh == nil else { return }
+        let work = DispatchWorkItem { [weak self] in
+            let index = ChatRouteIndex.load()
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.pendingRouteRefresh = nil
+                self.routeIndex = index
+                var updated = self.inbox
+                if updated.restoreChatRoutes(from: index) > 0 {
+                    self.inbox = updated
+                    self.save()
+                }
+            }
+        }
+        pendingRouteRefresh = work
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.25, execute: work)
+    }
     private var timer:Timer?
     private var sessionUnavailable=false
     private var observers:[NSObjectProtocol]=[]
@@ -42,6 +63,7 @@ final class AttentionController: ObservableObject {
         } catch { storageError="Couldn’t load the saved tray. Existing history has been kept untouched." }
     }
     func start() {
+        refreshRoutes()
         if autoMeetings { meetings.start() }
         focusedChat.start { [weak self] context in self?.markFocusedRead(context) }
         let center=NSWorkspace.shared.notificationCenter
@@ -67,7 +89,10 @@ final class AttentionController: ObservableObject {
         focusedChat.inspect { [weak self] context in
             guard let self else { return }
             let seen = !self.sessionUnavailable && context?.matches(source:ping.source,title:ping.title,body:ping.body)==true
-            let entry=InboxEntry(source:ping.source,title:ping.title,body:ping.body,read:seen)
+            var entry=InboxEntry(source:ping.source,title:ping.title,body:ping.body,read:seen)
+            entry.chatID = self.routeIndex.destination(for: entry)
+            self.originalActions[entry.id] = ping.openNotification
+            self.refreshRoutes()
             self.inbox.insert(entry)
             if !seen && self.vineOnly {
                 if !self.isQuiet && !VineSummary.previewable([entry]).isEmpty { self.onVineArrival?() }
@@ -94,10 +119,20 @@ final class AttentionController: ObservableObject {
     func remove(_ id:UUID) { model.overlay.removeReadNotifications([id]);inbox.remove(id);queue.remove(id);live.removeValue(forKey:id);save() }
     func clear() { model.overlay.removeReadNotifications(Set(inbox.entries.map(\.id)));inbox.clear();queue.clear();live.removeAll();save() }
     func open(_ entry:InboxEntry) {
-        guard let url=entry.chatURL else { model.openSource(entry.source);return }
-        guard let app=NSWorkspace.shared.urlForApplication(withBundleIdentifier:"com.openai.codex") else { model.openSource(.codex);return }
-        NSWorkspace.shared.open([url],withApplicationAt:app,configuration:NSWorkspace.OpenConfiguration()) { [weak self] _, error in
-            if error != nil { DispatchQueue.main.async { self?.model.openSource(.codex) } }
+        let current = inbox.entries.first { $0.id == entry.id } ?? entry
+        guard let url = current.chatURL,
+              let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: current.source.bundleID) else {
+            if let original = originalActions[current.id] { original() }
+            else { model.openSource(current.source) }
+            return
+        }
+        NSWorkspace.shared.open([url], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration()) { [weak self] _, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if error == nil { self.markRead(current.id) }
+                else if let original = self.originalActions[current.id] { original() }
+                else { self.model.status = "Couldn’t open this chat in " + current.source.rawValue + "." }
+            }
         }
     }
     func importCodexEvents() {
@@ -149,15 +184,18 @@ final class AttentionController: ObservableObject {
         var pruned=inbox;pruned.prune()
         if pruned.entries.count != inbox.entries.count { inbox=pruned;save() }
         let valid=Set(inbox.entries.map(\.id));live=live.filter{valid.contains($0.key)}
+        originalActions = originalActions.filter { valid.contains($0.key) }
         guard model.enabled else { return }
         let wasDeferred=queue.deferred
         let ids=queue.flush(at:Date.timeIntervalSinceReferenceDate,quiet:isQuiet)
         let entries=ids.compactMap { id in inbox.entries.first{$0.id==id && !$0.read} }
         guard !entries.isEmpty else { return }
         if entries.count == 1 && !wasDeferred, let entry=entries.first,var ping=live[entry.id] {
-            let original=ping.openNotification
-            if original == nil { ping.actionLabel="Open \(ping.source.rawValue)" }
-            ping.openNotification={ [weak self] in self?.markRead(entry.id);if let original { original() } else { self?.model.openSource(entry.source) } }
+            if entry.chatURL == nil && ping.openNotification == nil { ping.actionLabel="Open "+ping.source.rawValue }
+            ping.openNotification={ [weak self] in
+                self?.open(entry)
+                if entry.chatURL == nil { self?.markRead(entry.id) }
+            }
             model.overlay.enqueue(ping)
         } else {
             let apps=Set(entries.map{$0.source.rawValue}).sorted().joined(separator:" and ")
